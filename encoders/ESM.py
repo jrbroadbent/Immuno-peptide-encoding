@@ -2,15 +2,25 @@
 Encoder using ESM protein seqeunce embeddings
 both ESM Cambria with 300M parameters 
 and ESM ... with 8M parameters
+
+run as main to produce dataset with ESM encodings
+saved in ESM_encoded_samples.pt
+
+run:
+python encoders/ESM.py
 '''
 
 import numpy as np
+import pandas as pd
 from esm.models.esmc import ESMC
 from esm.sdk.api import ESMProtein, LogitsConfig
-from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+# need this version if running from main
+#from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
-# from transformers import AutoTokenizer, EsmModel
+from transformers import AutoTokenizer, EsmModel
 import torch
+import os
 
 
 # from transformers import EsmModel # from hugging face
@@ -38,8 +48,8 @@ def esm_embedding(peptide, client, tokenizer):
         outputs = client(**inputs)
 
     embedding = outputs.last_hidden_state 
-    embedding = embedding.squeeze(0).unsqueeze(-1)
-    return embedding  # [len(peptide)+2, 320, 1]
+    # embedding = embedding.squeeze(0).unsqueeze(-1)
+    return embedding  # [1, len(peptide)+2, 320]
 
 # # esmC_300M_embedding
 # def esm2_embedding(peptide, client):
@@ -91,14 +101,59 @@ def construct_esm_embedding(ori, hla_dic, dic_inventory, client, tokenizer=None)
 
 
 def pull_peptide_esm(dataset):
-    result = np.empty([len(dataset),12,320,1])   # [len, 12,960,1]
+    result = np.empty([len(dataset),1,12,320])   # [len, 12,960,1]
     for i in range(len(dataset)):
         result[i,:,:,:] = dataset[i][0]
     return result
 
 
 def pull_hla_esm(dataset):
-    result = np.empty([len(dataset),48,320,1])  # [len, 48,960,1]
+    result = np.empty([len(dataset),1,48,320])  # [len, 48,960,1]
     for i in range(len(dataset)):
         result[i,:,:,:] = dataset[i][1]
     return result
+
+
+def main():
+    print("start of program")
+
+    os.chdir('/home/josh/Dev/Project/')
+    ori = pd.read_csv('./data/remove0123_sample100.csv') # what is this datase?
+    
+    frac = 1 # choose dataset size --> 1 = whole dataset
+    ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
+    
+    hla = pd.read_csv('./data/hla2paratopeTable_aligned.txt', sep='\t')
+    hla_dic = hla_df_to_dic(hla)
+    inventory = list(hla_dic.keys())
+    dic_inventory = dict_inventory(inventory)
+
+    # load ESM model 
+    print("loading ESM model")
+    model_name = "facebook/esm2_t6_8M_UR50D"
+    client = EsmModel.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    print("finished loading ESM model")
+
+    print("start encoding")
+    dataset = construct_esm_embedding(ori, hla_dic, dic_inventory, client, tokenizer)
+    input1 = pull_peptide_esm(dataset)
+    input2 = pull_hla_esm(dataset)
+    label = pull_label(dataset)
+    print("finish encoding")
+
+    # save dataset to a file or put these functions inside custom dataset 
+    x1 = torch.from_numpy(input1).to(torch.float32) 
+    x2 = torch.from_numpy(input2).to(torch.float32)
+    y = torch.from_numpy(label).to(torch.float32)
+
+
+    print("saving to file")
+    torch.save({"x1": x1, "x2": x2, "y": y}, "encoders/ESM_encoded_samples.pt")
+    print("finished")
+
+    return None
+
+
+if __name__ == '__main__':
+    main()
