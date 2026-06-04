@@ -17,7 +17,7 @@ import pickle
 import copy
 
 # from encoders.ESM import *
-from models.model_defs import seperateCNN
+from models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, ESM_seperateCNN
 from transformers import AutoTokenizer, EsmModel
 
 print("finished imports")
@@ -27,9 +27,11 @@ device = torch.accelerator.current_accelerator().type if torch.accelerator.is_av
 
 
 def bootstrap(
-        dataset: torch.utils.data.Dataset,   # test set
+        train_dataset,
+        test_dataset: torch.utils.data.Dataset,   # test set
         model,
         loss_fn,
+        optimizer,
         n: int,         # size of sample
         B: int,         # number of samples
         ):
@@ -37,39 +39,51 @@ def bootstrap(
     model.eval()
     
     log_scores = []
-    with torch.no_grad():
-        for i in range(B):
-            test_loss, correct = 0, 0
-            
-            # random sample with replacement
-            sampler = RandomSampler(dataset, replacement=True, num_samples=n)
-            dataloader = DataLoader(dataset, sampler=sampler, batch_size=1)  # batch_size default 1
-            
-            # size = len(dataloader.dataset)
-            # num_batches = len(dataloader)
-            size = n
-            num_batches = n
+    for i in range(B):
+        #### TRAIN ####
+        sampler = RandomSampler(test_dataset, replacement=True, num_samples=len(train_dataset))
+        train_dataloader = DataLoader(test_dataset, sampler=sampler, batch_size=128)  # batch_size default 1
+        
+        epochs = 200
+        best_loss = float('inf')
+        early_stopping = EarlyStopping(patience=2, delta=0, verbose=True)
+        # best_weights = None
+        for epoch in range(epochs):
+            # print(f"Epoch {epoch+1}\n-------------------------------")
+            loss = train(train_dataloader, model, loss_fn, optimizer, verbose=False, output=True)
+            if loss < best_loss:
+                best_loss = loss
+                # best_weights = copy.deepcopy(model.state_dict())
+    
+            # Check early stopping condition
+            early_stopping.check_early_stop(loss)
+            if early_stopping.stop_training:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
 
-            for X, y in dataloader:
-                pred = model(X)
-                test_loss += loss_fn(pred, y).item()
-                correct += (torch.round(pred) == y).type(torch.float).sum().item()
-                #correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
-            test_loss /= num_batches
-            correct /= size
-            
-            if (i % 100) == 0:
-                print("Bootstrap iteration:", i)
-                print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        #### TEST ####
+        # random sample with replacement
+        sampler = RandomSampler(test_dataset, replacement=True, num_samples=n)
+        test_dataloader = DataLoader(test_dataset, sampler=sampler, batch_size=1)  # batch_size default 1
+        test_loss, correct = test(test_dataloader,model,loss_fn, output=True)
+        
+        if (i % 10) == 0:
+            print("Bootstrap iteration:", i)
+            print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
-            log_scores.append(test_loss)
+        log_scores.append(test_loss)
+
+
+        #### reset model ####
+        # train function zeros optimizer gradients at end of each iteration, so only need to reinitialise model weights
+        model.apply(reset_weights) 
     
     # return mean and SE
     mean = np.mean(log_scores)
-    se = np.std(log_scores)
+    se = np.std(log_scores, ddof=1)/np.sqrt(B)
 
-    return mean, se 
+    return log_scores, mean, se 
 
 
 
@@ -77,13 +91,14 @@ def bootstrap(
 # save model weights whenever loss decreases 
 # restore best model weights 
 
-def train(dataloader, model, loss_fn, optimizer):
+def train(dataloader, model, loss_fn, optimizer, verbose=False, output=False):
     size = len(dataloader.dataset)
     model.train()
     # print("num samples:", len(dataloader.dataset))  # ~7000
     # print("num batches", len(dataloader))  # ~50 (batch_size=128)
     for batch, (X, y) in enumerate(dataloader):
         # X, y = X.to(device), y.to(device)
+
 
         # Compute prediction error
         pred = model(X)
@@ -96,9 +111,12 @@ def train(dataloader, model, loss_fn, optimizer):
 
         if batch % 10 == 0:
             loss, current = loss.item(), (batch + 1) * len(X[0])
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-        
-    return loss
+            # print(X[0].size())  # [128,1,12,320]
+            if verbose:
+                print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+    
+    if output:
+        return loss
 
 
 
@@ -110,22 +128,26 @@ def train(dataloader, model, loss_fn, optimizer):
     # pred should be a probability 
 
 
-def test(dataloader, model, loss_fn):
-    size = len(dataloader.dataset)
+def test(dataloader, model, loss_fn, verbose=False, output=False):
+    size = dataloader.sampler._num_samples
     num_batches = len(dataloader)
     model.eval()                    # what does this do?
     test_loss, correct = 0, 0
     with torch.no_grad():
         for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
+            # X, y = X.to(device), y.to(device)
             pred = model(X)
             test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+            correct += (torch.round(pred) == y).type(torch.float).sum().item()
+            # correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+    if verbose:
+        print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
     
-    return test_loss
+    if output:
+        return test_loss, correct
 
 
 
@@ -167,6 +189,10 @@ class EarlyStopping:
                     print("Stopping early as no improvement has been observed.")
 
 
+def reset_weights(m):
+    if hasattr(m, 'reset_parameters'):
+        m.reset_parameters()
+
 
 def retain_910(ori):
     cond = []
@@ -186,72 +212,58 @@ def main():
     os.chdir('/home/josh/Dev/Project/')
 
     # load data 
-    dataset = torch.load('encoders/ESM_encoded_samples.pt')
-    print(dataset.keys())
-    print(dataset['x1'].size(), dataset['x2'].size(), dataset['y'].size())
-    print(dataset['x1'][1,:,:,:].size(), dataset['x2'][1,:,:,:].size(), len(dataset['y']))
+    # dataset = torch.load('encoders/ESM_encoded_samples.pt')
+    dataset = torch.load('encoders/AAindex_encoded_samples.pt')
+    # dataset = torch.load('encoders/AAindex_encoded_samples.pt')
 
     dataset = ImmunoDataset(dataset)
 
     # train test split
     train_data, test_data = random_split(dataset, [0.8,0.2])
-    print(len(train_data), len(test_data))
 
-
-    # # test part of bootstrap implementation
-    # sampler = RandomSampler(test_data, replacement=True, num_samples=len(test_data))
-    # dataloader = DataLoader(test_data, sampler=sampler, batch_size=1)  # batch_size default 1
-
-    # i = 0
-    # for x, y in dataloader:
-    #     if i == 0:
-    #         print(x[0].size(), x[1].size(), y)
-    #     i += 1
-    # print(i)
-
-
-    batch_size = 128
-    train_dataloader = DataLoader(train_data, batch_size=batch_size)
+    # batch_size = 128
+    # train_dataloader = DataLoader(train_data, batch_size=batch_size)
     # test_dataloader = DataLoader(test_data, batch_size=batch_size)
     
-    model = seperateCNN()
+    # specify different models here 
+    #model = ESM_seperateCNN()
+    model = AAindex_seperateCNN()
     model.to(device)
 
     # loss_fn = nn.CrossEntropyLoss()
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    # train 
-    epochs = 200  # 200
-    best_loss = float('inf')
-    early_stopping = EarlyStopping(patience=2, delta=0, verbose=True)
-    # best_weights = None
-    for epoch in range(epochs):
-        print(f"Epoch {epoch+1}\n-------------------------------")
-        loss = train(train_dataloader, model, loss_fn, optimizer)
-        if loss < best_loss:
-            best_loss = loss
-            # best_weights = copy.deepcopy(model.state_dict())
-        
-        # Check early stopping condition
-        early_stopping.check_early_stop(loss)
-        if early_stopping.stop_training:
-            print(f"Early stopping at epoch {epoch+1}")
-            break
-        
-        # test(test_dataloader, model, loss_fn)
 
-    #model.load_state_dict(best_weights)
-    print("Done!")
-
-
-    # bootrsap validation 
-    mean, se = bootstrap(test_data, model, loss_fn, n=len(test_data), B=1000) # n=10, B=10)
+    # bootrsap
+    log_scores, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=10, B=10) # n=len(test_data), B=1000)
     print("bootstrap mean:", mean)
     print("bootstrap se:", se)
 
+    # remove skew ??
+    log_scores = np.log(log_scores) # natural logarithm
+
+    # confidence interval
+    CI = np.percentile(log_scores, [2.5,97.5])
+    print("confidence interval:\n", CI)
+
+    plt.hist(log_scores, bins=10, density=True) # range=(0, CI[1]+se)
+    plt.title("Histogram of ESM encoder model log scores")
+    plt.xlabel("log score")
+    plt.ylabel("density")
+    plt.savefig("LogScoreDist.png")
+
+
+    # do bootstrap for each model here 
+
 
     return None
+
+
+    print(dataset.keys())
+    print(dataset['x1'].size(), dataset['x2'].size(), dataset['y'].size())
+    print(dataset['x1'][1,:,:,:].size(), dataset['x2'][1,:,:,:].size(), len(dataset['y']))
+    print(len(train_data), len(test_data))
 
 #####################################################################################################
 
