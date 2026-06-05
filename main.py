@@ -213,8 +213,8 @@ def main():
 
     # load data 
     # dataset = torch.load('encoders/ESM_encoded_samples.pt')
-    dataset = torch.load('encoders/AAindex_encoded_samples.pt')
     # dataset = torch.load('encoders/AAindex_encoded_samples.pt')
+    dataset = torch.load('encoders/OHE_encoded_samples.pt')
 
     dataset = ImmunoDataset(dataset)
 
@@ -227,7 +227,8 @@ def main():
     
     # specify different models here 
     #model = ESM_seperateCNN()
-    model = AAindex_seperateCNN()
+    #model = AAindex_seperateCNN()
+    model = OHE_seperateCNN()
     model.to(device)
 
     # loss_fn = nn.CrossEntropyLoss()
