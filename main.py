@@ -20,10 +20,18 @@ import copy
 from models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, ESM_seperateCNN
 from transformers import AutoTokenizer, EsmModel
 
-print("finished imports")
-
 
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+
+
+# implement early stopping
+# use epochs = 200, batch size = 128  # specified in dataloader? 
+# need to specify 0.5 threshold in the model 
+# is pred going to be either 1 or 0? or should it be a probability 
+# pred should be a probability
+# early stopping if loss doesn't change for ... steps (accoring to threshold)
+# save model weights whenever loss decreases 
+# restore best model weights 
 
 
 def bootstrap(
@@ -34,15 +42,16 @@ def bootstrap(
         optimizer,
         n: int,         # size of sample
         B: int,         # number of samples
+        retrain = False
         ):
-
-    model.eval()
     
-    log_scores = []
-    for i in range(B):
-        #### TRAIN ####
-        sampler = RandomSampler(test_dataset, replacement=True, num_samples=len(train_dataset))
-        train_dataloader = DataLoader(test_dataset, sampler=sampler, batch_size=128)  # batch_size default 1
+
+    if not retrain:
+        #### reset model ####
+        # train function zeros optimizer gradients at end of each iteration, so only need to reinitialise model weights
+        model.apply(reset_weights) 
+        
+        train_dataloader = DataLoader(train_dataset, batch_size=128)
         
         epochs = 200
         best_loss = float('inf')
@@ -62,6 +71,36 @@ def bootstrap(
                 break
 
 
+    log_scores = []
+    for i in range(B):
+        #### TRAIN ####
+        if retrain:
+            #### reset model ####
+            # train function zeros optimizer gradients at end of each iteration, so only need to reinitialise model weights
+            model.apply(reset_weights) 
+            
+            # sampler = RandomSampler(train_dataset, replacement=True, num_samples=len(train_dataset))
+            # train_dataloader = DataLoader(train_dataset, sampler=sampler, batch_size=128)  # batch_size default 1
+            train_dataloader = DataLoader(train_dataset, batch_size=128)
+
+            epochs = 200
+            best_loss = float('inf')
+            early_stopping = EarlyStopping(patience=2, delta=0, verbose=True)
+            # best_weights = None
+            for epoch in range(epochs):
+                # print(f"Epoch {epoch+1}\n-------------------------------")
+                loss = train(train_dataloader, model, loss_fn, optimizer, verbose=False, output=True)
+                if loss < best_loss:
+                    best_loss = loss
+                    # best_weights = copy.deepcopy(model.state_dict())
+        
+                # Check early stopping condition
+                early_stopping.check_early_stop(loss)
+                if early_stopping.stop_training:
+                    print(f"Early stopping at epoch {epoch+1}")
+                    break
+
+
         #### TEST ####
         # random sample with replacement
         sampler = RandomSampler(test_dataset, replacement=True, num_samples=n)
@@ -74,22 +113,16 @@ def bootstrap(
 
         log_scores.append(test_loss)
 
-
-        #### reset model ####
-        # train function zeros optimizer gradients at end of each iteration, so only need to reinitialise model weights
-        model.apply(reset_weights) 
     
-    # return mean and SE
+    # mean and SE
     mean = np.mean(log_scores)
     se = np.std(log_scores, ddof=1)/np.sqrt(B)
+    
+    # confidence interval
+    CI = np.percentile(log_scores, [2.5,97.5])
 
-    return log_scores, mean, se 
+    return log_scores, CI, mean, se 
 
-
-
-# early stopping if loss doesn't change for ... steps (accoring to threshold)
-# save model weights whenever loss decreases 
-# restore best model weights 
 
 def train(dataloader, model, loss_fn, optimizer, verbose=False, output=False):
     size = len(dataloader.dataset)
@@ -116,16 +149,7 @@ def train(dataloader, model, loss_fn, optimizer, verbose=False, output=False):
                 print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
     
     if output:
-        return loss
-
-
-
-
-    # implement early stopping
-    # use epochs = 200, batch size = 128  # specified in dataloader? 
-    # need to specify 0.5 threshold in the model 
-    # is pred going to be either 1 or 0? or should it be a probability 
-    # pred should be a probability 
+        return loss 
 
 
 def test(dataloader, model, loss_fn, verbose=False, output=False):
@@ -148,7 +172,6 @@ def test(dataloader, model, loss_fn, verbose=False, output=False):
     
     if output:
         return test_loss, correct
-
 
 
 class ImmunoDataset(Dataset):
@@ -208,55 +231,66 @@ def retain_910(ori):
 
 
 def main():
-    print("start of program")
+    print("\nstart of program\n")
     os.chdir('/home/josh/Dev/Project/')
 
     # load data 
-    # dataset = torch.load('encoders/ESM_encoded_samples.pt')
-    # dataset = torch.load('encoders/AAindex_encoded_samples.pt')
-    dataset = torch.load('encoders/OHE_encoded_samples.pt')
+    ESM_dataset = torch.load('encoders/ESM_encoded_samples.pt')
+    AAindex_dataset = torch.load('encoders/AAindex_encoded_samples.pt')
+    OHE_dataset = torch.load('encoders/OHE_encoded_samples.pt')
+    datasets = [ESM_dataset, AAindex_dataset, OHE_dataset]
 
-    dataset = ImmunoDataset(dataset)
-
-    # train test split
-    train_data, test_data = random_split(dataset, [0.8,0.2])
-
-    # batch_size = 128
-    # train_dataloader = DataLoader(train_data, batch_size=batch_size)
-    # test_dataloader = DataLoader(test_data, batch_size=batch_size)
-    
     # specify different models here 
-    #model = ESM_seperateCNN()
-    #model = AAindex_seperateCNN()
-    model = OHE_seperateCNN()
-    model.to(device)
+    ESM_model = ESM_seperateCNN()
+    AAindex_model = AAindex_seperateCNN()
+    OHE_model = OHE_seperateCNN()
+    # model.to(device)
+    models = [ESM_model, AAindex_model, OHE_model]
+    model_names = ["ESM", "AAindex", "OHE"]
 
-    # loss_fn = nn.CrossEntropyLoss()
-    loss_fn = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    results = {}
+
+    for i, (model, dataset) in enumerate(zip(models,datasets)): 
+        print(f"{model_names[i]} Model \n-------------------------------")
+        
+        dataset = ImmunoDataset(dataset)
+
+        # train test split
+        train_data, test_data = random_split(dataset, [0.8,0.2])
+
+        # loss_fn = nn.CrossEntropyLoss()
+        loss_fn = nn.BCELoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+        # bootstrap
+        log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=False) # n=len(test_data), B=1000)
+        print("bootstrap mean:", mean)
+        print("bootstrap se:", se)
+        print(f"confidence interval:\n {CI} \n\n")
+        results[("no_retrain", model_names[i])] = log_scores
+
+        log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=True)
+        print("bootstrap mean:", mean)
+        print("bootstrap se:", se)
+        print(f"confidence interval:\n {CI} \n\n")
+        results[("retrain", model_names[i])] = log_scores
+
+        # remove skew ??
+        # log_scores = np.log(log_scores) # natural logarithm
 
 
-    # bootrsap
-    log_scores, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=10, B=10) # n=len(test_data), B=1000)
-    print("bootstrap mean:", mean)
-    print("bootstrap se:", se)
-
-    # remove skew ??
-    log_scores = np.log(log_scores) # natural logarithm
-
-    # confidence interval
-    CI = np.percentile(log_scores, [2.5,97.5])
-    print("confidence interval:\n", CI)
-
-    plt.hist(log_scores, bins=10, density=True) # range=(0, CI[1]+se)
-    plt.title("Histogram of ESM encoder model log scores")
-    plt.xlabel("log score")
-    plt.ylabel("density")
-    plt.savefig("LogScoreDist.png")
+        # plot log scores distribution
+        # plt.hist(log_scores, bins=10, density=True) # range=(0, CI[1]+se)
+        # plt.title("Histogram of ESM encoder model log scores")
+        # plt.xlabel("log score")
+        # plt.ylabel("density")
+        # plt.savefig("LogScoreDist.png")
 
 
-    # do bootstrap for each model here 
-
+    # save log scores dictionary to disk
+    with open("final_bootstrap_log_scores2.pkl", "wb") as f:
+        pickle.dump(results, f)
+        
 
     return None
 
