@@ -46,7 +46,7 @@ def bootstrap(
         ):
     
 
-    if not retrain:
+    if retrain:
         #### reset model ####
         # train function zeros optimizer gradients at end of each iteration, so only need to reinitialise model weights
         model.apply(reset_weights) 
@@ -73,34 +73,6 @@ def bootstrap(
 
     log_scores = []
     for i in range(B):
-        #### TRAIN ####
-        if retrain:
-            #### reset model ####
-            # train function zeros optimizer gradients at end of each iteration, so only need to reinitialise model weights
-            model.apply(reset_weights) 
-            
-            # sampler = RandomSampler(train_dataset, replacement=True, num_samples=len(train_dataset))
-            # train_dataloader = DataLoader(train_dataset, sampler=sampler, batch_size=128)  # batch_size default 1
-            train_dataloader = DataLoader(train_dataset, batch_size=128)
-
-            epochs = 200
-            best_loss = float('inf')
-            early_stopping = EarlyStopping(patience=2, delta=0, verbose=True)
-            # best_weights = None
-            for epoch in range(epochs):
-                # print(f"Epoch {epoch+1}\n-------------------------------")
-                loss = train(train_dataloader, model, loss_fn, optimizer, verbose=False, output=True)
-                if loss < best_loss:
-                    best_loss = loss
-                    # best_weights = copy.deepcopy(model.state_dict())
-        
-                # Check early stopping condition
-                early_stopping.check_early_stop(loss)
-                if early_stopping.stop_training:
-                    print(f"Early stopping at epoch {epoch+1}")
-                    break
-
-
         #### TEST ####
         # random sample with replacement
         sampler = RandomSampler(test_dataset, replacement=True, num_samples=n)
@@ -263,17 +235,18 @@ def main():
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
         # bootstrap
-        log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=False) # n=len(test_data), B=1000)
-        print("bootstrap mean:", mean)
-        print("bootstrap se:", se)
-        print(f"confidence interval:\n {CI} \n\n")
-        results[("no_retrain", model_names[i])] = log_scores
+        # log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=False) # n=len(test_data), B=1000)
+        # print("bootstrap mean:", mean)
+        # print("bootstrap se:", se)
+        # print(f"confidence interval:\n {CI} \n\n")
+        # results[("no_retrain", model_names[i])] = log_scores
 
-        log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=True)
-        print("bootstrap mean:", mean)
-        print("bootstrap se:", se)
-        print(f"confidence interval:\n {CI} \n\n")
-        results[("retrain", model_names[i])] = log_scores
+        for j in range(10):
+            log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=True)
+            print("bootstrap mean:", mean)
+            print("bootstrap se:", se)
+            print(f"confidence interval:\n {CI} \n\n")
+            results[(j, model_names[i])] = log_scores
 
         # remove skew ??
         # log_scores = np.log(log_scores) # natural logarithm
@@ -288,7 +261,7 @@ def main():
 
 
     # save log scores dictionary to disk
-    with open("final_bootstrap_log_scores2.pkl", "wb") as f:
+    with open("bootstrap_tain_avg.pkl", "wb") as f:
         pickle.dump(results, f)
         
 
