@@ -118,7 +118,7 @@ def main():
     print("start of program")
 
     os.chdir('/home/josh/Dev/Project/')
-    ori = pd.read_csv('./data/remove0123_sample100.csv') # what is this datase?
+    ori = pd.read_csv('./data/remove0123_sample100.csv') # what is this database?
     
     frac = 1 # choose dataset size --> 1 = whole dataset
     ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
