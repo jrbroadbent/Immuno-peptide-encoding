@@ -207,9 +207,9 @@ def main():
     os.chdir('/home/josh/Dev/Project/')
 
     # load data 
-    ESM_dataset = torch.load('encoders/ESM_encoded_samples.pt')
-    AAindex_dataset = torch.load('encoders/AAindex_encoded_samples.pt')
-    OHE_dataset = torch.load('encoders/OHE_encoded_samples.pt')
+    ESM_dataset = torch.load('data/ESM_encoded_samples.pt')
+    AAindex_dataset = torch.load('data/AAindex_encoded_samples.pt')
+    OHE_dataset = torch.load('data/OHE_encoded_samples.pt')
     datasets = [ESM_dataset, AAindex_dataset, OHE_dataset]
 
     # specify different models here 
