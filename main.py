@@ -261,7 +261,7 @@ def main():
 
 
     # save log scores dictionary to disk
-    with open("bootstrap_tain_avg.pkl", "wb") as f:
+    with open("new_name.pkl", "wb") as f:  # "bootstrap_tain_avg.pkl"
         pickle.dump(results, f)
         
 

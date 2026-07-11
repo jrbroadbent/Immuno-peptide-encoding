@@ -89,7 +89,7 @@ class AAindex_seperateCNN(nn.Module):
 
 
 class OHE_seperateCNN(nn.Module):
-    def __init__(self):
+    def __init__(self, dropout = 0.2):
         super().__init__()
         self.cnn1 = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=(2,21)),  # [9,1,16]
@@ -115,7 +115,7 @@ class OHE_seperateCNN(nn.Module):
         self.combined = nn.Sequential(
             nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Dropout(p=0.2),
+            nn.Dropout(p=dropout),
             nn.Linear(128, 1),
             nn.Sigmoid()
         )
