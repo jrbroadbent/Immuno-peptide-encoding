@@ -13,20 +13,21 @@ from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 # need this version if running in main
 # from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
-DEFAULT_INPUT_PATH="../data/AAindex1"
-DEFAULT_OUTPUT_PATH="../data/"
+DEFAULT_INPUT_PATH="data/AAindex1"
+DEFAULT_OUTPUT_PATH="data/"
 
 def AAindex_encoder(peptide, AAindex_pca):
 
     amino = 'ARNDCQEGHILKMFPSTWYV-'
     matrix = np.transpose(AAindex_pca)   # [12,21]
-    encoded = np.empty([len(peptide), 12])  # (1,seq_len,12)
+    dim = np.asarray(AAindex_pca).shape[-1]
+    encoded = np.empty([len(peptide), dim])  # (1,seq_len,12)
     for i in range(len(peptide)):
         query = peptide[i]
         if query == 'X': query = '-'
         query = query.upper()
         encoded[i, :] = matrix[:, amino.index(query)]    
-    encoded = encoded.reshape(1,len(peptide),12)
+    encoded = encoded.reshape(1,len(peptide),dim)
     return encoded
 
 
@@ -68,14 +69,16 @@ def construct_AAindex_pca(ori, hla_dic,dic_inventory,AAindex_pca):
 
 
 def pull_peptide_aaindex(dataset):
-    result = np.empty([len(dataset),1,10,12])
+    dim = np.asarray(dataset[0][0][0]).shape[-1]
+    result = np.empty([len(dataset),1,10,dim])
     for i in range(len(dataset)):
         result[i,:,:,:] = dataset[i][0]
     return result
 
 
 def pull_hla_aaindex(dataset):
-    result = np.empty([len(dataset),1,46,12])
+    dim = np.asarray(dataset[0][0][0]).shape[-1]
+    result = np.empty([len(dataset),1,46,dim])
     for i in range(len(dataset)):
         result[i,:,:,:] = dataset[i][1]
     return result
@@ -110,16 +113,19 @@ def AAindex_pca_matrix(input_path=DEFAULT_INPUT_PATH, output_path=DEFAULT_OUTPUT
     # normalise the 553 columns
     AAindex = RobustScaler().fit_transform(AAindex.T)
 
+
+    # save AAindex (NOT with pca) encoding matrix to file
+    np.savetxt("encoders/AAindex.txt", AAindex)
+
     # conduct PCA and select first 12 principal components 
     pca = PCA(n_components=12)
-    AAindex = pca.fit_transform(AAindex)
+    AAindex_pca = pca.fit_transform(AAindex)
 
     print("explained variance:", pca.explained_variance_ratio_) # 25% of variance explained in first component
-    print("AAindex after PCA", np.shape(AAindex)) # [20, 12] --> each row corresponds to AA
+    print("AAindex after PCA", np.shape(AAindex_pca)) # [20, 12] --> each row corresponds to AA
 
-    # save to file
-    os.chdir(output_path)
-    np.savetxt("AAindex_pca.txt", AAindex)
+    # save AAindex (with pca) encoding matrix to file
+    np.savetxt("encoders/AAindex_pca_v2.txt", AAindex_pca)
 
     return None
 # AAindex_pca = np.loadtxt("my_after_pca.txt")
@@ -128,9 +134,15 @@ def AAindex_pca_matrix(input_path=DEFAULT_INPUT_PATH, output_path=DEFAULT_OUTPUT
 
 def main():
     print("start of program")
+    PRODUCE_MATRICES = True
 
     os.chdir('/home/josh/Dev/Project/')
-    ori = pd.read_csv('data/remove0123_sample100.csv') # what is this datase?
+
+    # Produce AAindex encoding matrices (with and without pca)
+    if PRODUCE_MATRICES:
+        AAindex_pca_matrix()
+
+    ori = pd.read_csv('data/iedb_data.csv')
     
     frac = 1 # choose dataset size --> 1 = whole dataset
     ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
@@ -140,23 +152,27 @@ def main():
     inventory = list(hla_dic.keys())
     dic_inventory = dict_inventory(inventory)
 
-    AAindex = np.loadtxt('encoders/AAindex_pca.txt')
+    AAindex_pca = np.loadtxt('encoders/AAindex_pca.txt')
+    AAindex = np.loadtxt('encoders/AAindex.txt')
 
-    print("start encoding")
-    dataset = construct_AAindex_pca(ori, hla_dic, dic_inventory, AAindex)
-    input1 = pull_peptide_aaindex(dataset)
-    input2 = pull_hla_aaindex(dataset)
-    label = pull_label_aaindex(dataset)
-    print("finish encoding")
+    encoding = ["AAindex_pca", "AAindex"]
+    for i, encoder in enumerate([AAindex_pca, AAindex]):
+        print("start " + encoding[i] + " encoding")
+        dataset = construct_AAindex_pca(ori, hla_dic, dic_inventory, encoder)
+        # print(np.asarray(dataset[0][0][0]).shape[-1])
+        input1 = pull_peptide_aaindex(dataset)
+        input2 = pull_hla_aaindex(dataset)
+        label = pull_label_aaindex(dataset)
+        print("finish encoding")
 
-    # save dataset to a file or put these functions inside custom dataset 
-    x1 = torch.from_numpy(input1).to(torch.float32) 
-    x2 = torch.from_numpy(input2).to(torch.float32)
-    y = torch.from_numpy(label).to(torch.float32)
+        # save dataset to a file or put these functions inside custom dataset 
+        x1 = torch.from_numpy(input1).to(torch.float32) 
+        x2 = torch.from_numpy(input2).to(torch.float32)
+        y = torch.from_numpy(label).to(torch.float32)
 
-    print("saving to file")
-    torch.save({"x1": x1, "x2": x2, "y": y}, "encoders/AAindex_encoded_samples.pt")
-    print("finished")
+        print("saving to file")
+        torch.save({"x1": x1, "x2": x2, "y": y}, "encoders/" + encoding[i] + "_encoded_samples.pt")
+        print("finished")
 
     return None
 
