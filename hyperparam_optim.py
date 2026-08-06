@@ -5,10 +5,13 @@ from sklearn.model_selection import KFold
 import optuna
 from torch.utils.data import Dataset, DataLoader, random_split, Subset
 from models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, ESM_seperateCNN
-from torch.masked import MaskedTensor
+
+
+# __all__ = [
+#
+# ]
 
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-
 
 class ImmunoDataset(Dataset):
     def __init__(self, dataset):
@@ -47,17 +50,13 @@ class EarlyStopping:
                     print("Stopping early as no improvement has been observed.")
 
 
-def objective(trial):
+def objective(trial, model_fn, train_data): # could just pass it my train data 
     learning_rate = trial.suggest_float('lr', 1e-4, 1e-1, log=True)
     batch_size = trial.suggest_int('batch_size', 32, 256)
     dropout = trial.suggest_float('p', 0.1, 0.5)
     patience = trial.suggest_int('patience', 0, 20)
 
-    dataset = torch.load('data/OHE_encoded_samples.pt')
-    dataset = ImmunoDataset(dataset)
-    train_data, test_data = random_split(dataset, [0.8,0.2])
-
-    model = OHE_seperateCNN(dropout=dropout)
+    model = model_fn(dropout=dropout)    
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.BCELoss()
     
@@ -66,8 +65,7 @@ def objective(trial):
 
     # cross validation 
     for train_set, val_set in kf.split(train_data):
-        original_indices = [train_data.indices[i] for i in train_set]
-        data = Subset(dataset, original_indices)
+        data = Subset(train_data, train_set)
         train_loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 
         # train
@@ -89,8 +87,7 @@ def objective(trial):
                 break
         
         # validate
-        original_indices = [train_data.indices[i] for i in val_set]
-        data = Subset(dataset, original_indices)
+        data = Subset(train_data, val_set)
         val_loader = DataLoader(data, batch_size=1, shuffle=True)
         num_batches = len(val_loader)
         val_loss = 0
@@ -109,9 +106,23 @@ def objective(trial):
 def main():
     os.chdir('/home/josh/Dev/Project/')
 
-    study = optuna.create_study(study_name="hyperparam_optim",direction='minimize')
-    study.optimize(objective, n_trials=20)  # number of trials
-    print("Best Hyperparameters:", study.best_params)
+    # Datasets
+    ESM_dataset = torch.load('data/ESM_encoded_samples.pt')
+    AAindex_dataset = torch.load('data/AAindex_encoded_samples.pt')
+    OHE_dataset = torch.load('data/OHE_encoded_samples.pt')
+    datasets = [ESM_dataset, AAindex_dataset, OHE_dataset]
+
+    # Models 
+    model_fns = [ESM_seperateCNN, AAindex_seperateCNN, OHE_seperateCNN]
+    model_names = ["ESM", "AAindex", "OHE"]
+
+    for model_name, model_fn, dataset in zip(model_names, model_fns, datasets):
+        dataset = ImmunoDataset(dataset)
+        train_data, test_data = random_split(dataset, [0.8,0.2])
+        
+        study = optuna.create_study(study_name="hyperparam_optim",direction='minimize')
+        study.optimize(lambda trial: objective(trial, model_fn, train_data), n_trials=2)  # number of trials: 20
+        print(f"{model_name} Best Hyperparameters: {study.best_params}")
 
 
 
