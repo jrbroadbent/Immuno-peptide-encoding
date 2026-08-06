@@ -6,9 +6,9 @@ import os
 import torch
 import numpy as np
 import pandas as pd
-from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+# from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 # need this version if running in main
-#from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
 
 def one_hot_encoder(peptide):
@@ -76,11 +76,44 @@ def pull_hla_ohe(dataset):
     return result
 
 
+def ohe_encode_dataset(dataset = 'iedb_data.csv'):
+    os.chdir('/home/josh/Dev/Project/')
+    ori = pd.read_csv("data/" + dataset)
+
+    if dataset == "sars_cov_2_test.csv":
+            ori.rename(columns={"immunogenicity-con": "immunogenicity"}, inplace=True) 
+    
+    frac = 1 # choose dataset size --> 1 = whole dataset
+    ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
+    
+    hla = pd.read_csv('data/hla2paratopeTable_aligned.txt', sep='\t')
+    hla_dic = hla_df_to_dic(hla)
+    inventory = list(hla_dic.keys())
+    dic_inventory = dict_inventory(inventory)
+
+    print("start encoding")
+    dataset = construct_ohe(ori, hla_dic, dic_inventory)
+    input1 = pull_peptide_ohe(dataset)
+    input2 = pull_hla_ohe(dataset)
+    label = pull_label(dataset)
+    print("finish encoding")
+
+    # save dataset to a file or put these functions inside custom dataset 
+    x1 = torch.from_numpy(input1).to(torch.float32) 
+    x2 = torch.from_numpy(input2).to(torch.float32)
+    y = torch.from_numpy(label).to(torch.float32)
+
+    ohe_encoded_dataset = {"x1": x1, "x2": x2, "y": y}
+
+    return ohe_encoded_dataset
+
+
+
 def main():
     print("start of program")
 
     os.chdir('/home/josh/Dev/Project/')
-    ori = pd.read_csv('./data/remove0123_sample100.csv') # what is this datase?
+    ori = pd.read_csv('./data/iedb_data.csv')
     
     frac = 1 # choose dataset size --> 1 = whole dataset
     ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
