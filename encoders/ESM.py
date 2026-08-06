@@ -14,9 +14,9 @@ import numpy as np
 import pandas as pd
 from esm.models.esmc import ESMC
 from esm.sdk.api import ESMProtein, LogitsConfig
-from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+# from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 # need this version if running from main
-#from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
 from transformers import AutoTokenizer, EsmModel
 import torch
@@ -39,8 +39,6 @@ import os
 # tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # esm2_8M_embedding 
-# I think this is all working !!
-# just need to adapt the model to fit output
 def esm_embedding(peptide, client, tokenizer):
     inputs = tokenizer(peptide, return_tensors="pt")
 
@@ -101,28 +99,32 @@ def construct_esm_embedding(ori, hla_dic, dic_inventory, client, tokenizer=None)
 
 
 def pull_peptide_esm(dataset):
-    result = np.empty([len(dataset),1,12,320])   # [len, 12,960,1]
+    dim = np.asarray(dataset[0][0][0]).shape[-1]
+    result = np.empty([len(dataset),1,12,dim])   # [len, 12,960,1]
     for i in range(len(dataset)):
         result[i,:,:,:] = dataset[i][0]
     return result
 
 
 def pull_hla_esm(dataset):
-    result = np.empty([len(dataset),1,48,320])  # [len, 48,960,1]
+    dim = np.asarray(dataset[0][0][0]).shape[-1]
+    result = np.empty([len(dataset),1,48,dim])  # [len, 48,960,1]
     for i in range(len(dataset)):
         result[i,:,:,:] = dataset[i][1]
     return result
 
 
-def main():
-    print("start of program")
-
+def esm_encode_dataset(dataset = 'iedb_data.csv'):
     os.chdir('/home/josh/Dev/Project/')
-    ori = pd.read_csv('./data/remove0123_sample100.csv') # what is this database?
-    
+
+    ori = pd.read_csv("data/" + dataset)
+
+    if dataset == "sars_cov_2_test.csv":
+        ori.rename(columns={"immunogenicity-con": "immunogenicity"}, inplace=True) 
+        
     frac = 1 # choose dataset size --> 1 = whole dataset
     ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
-    
+
     hla = pd.read_csv('./data/hla2paratopeTable_aligned.txt', sep='\t')
     hla_dic = hla_df_to_dic(hla)
     inventory = list(hla_dic.keys())
@@ -142,14 +144,23 @@ def main():
     label = pull_label(dataset)
     print("finish encoding")
 
-    # save dataset to a file or put these functions inside custom dataset 
     x1 = torch.from_numpy(input1).to(torch.float32) 
     x2 = torch.from_numpy(input2).to(torch.float32)
     y = torch.from_numpy(label).to(torch.float32)
 
+    esm_encoded_dataset = {"x1": x1, "x2": x2, "y": y}
+
+    return esm_encoded_dataset
+
+
+def main():
+    print("start of program")
+
+    os.chdir('/home/josh/Dev/Project/')
+    encoded_dataset = esm_encode_dataset(dataset = 'iedb_data.csv')
 
     print("saving to file")
-    torch.save({"x1": x1, "x2": x2, "y": y}, "encoders/ESM_encoded_samples.pt")
+    torch.save(encoded_dataset, "data/ESM_encoded_samples.pt")
     print("finished")
 
     return None
