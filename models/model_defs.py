@@ -18,7 +18,7 @@ class ESM_seperateCNN(nn.Module):
             nn.Flatten()  # [128]
         )
         self.cnn2 = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=(15,320)),  # [32,1,16]
+            nn.Conv2d(1, 16, kernel_size=(17,320)),  # [32,1,16]
             nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=(2,1), stride=(2,1)),  # [16,1,16]
@@ -47,6 +47,48 @@ class ESM_seperateCNN(nn.Module):
 
 
 class AAindex_seperateCNN(nn.Module):
+    def __init__(self, dropout = 0.2):
+        super().__init__()
+        self.cnn1 = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=(2,553)),  # [9,1,16]
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=(2,1)),   # [8,1,32]
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=(2,1), stride=(2,1)),  # [4,1,32]
+            nn.Flatten()  # [128]
+        )
+        self.cnn2 = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=(15,553)),  # [32,1,16]
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=(2,1), stride=(2,1)),  # [16,1,16]
+            nn.Conv2d(16, 32, kernel_size=(9,1)),    # [8,1,32]
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=(2,1), stride=(2,1)), # [4,1,32]
+            nn.Flatten()  # [128]
+        )
+        self.combined = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(p=dropout),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x1 = x[0] # --> does this need to be [1, 10, 12]  ?
+        x2 = x[1] # --> does this need to be [1, 46, 12]  ?
+        output1 = self.cnn1(x1)
+        output2 = self.cnn2(x2)
+        combined = torch.cat((output1, output2), 1)
+        logits = self.combined(combined)
+        return logits 
+
+
+class AAindex_pca_seperateCNN(nn.Module):
     def __init__(self, dropout = 0.2):
         super().__init__()
         self.cnn1 = nn.Sequential(
@@ -86,7 +128,7 @@ class AAindex_seperateCNN(nn.Module):
         combined = torch.cat((output1, output2), 1)
         logits = self.combined(combined)
         return logits 
-
+    
 
 class OHE_seperateCNN(nn.Module):
     def __init__(self, dropout = 0.2):
