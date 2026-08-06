@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 import os
 import glob
-from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+# from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 # need this version if running in main
-# from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
 DEFAULT_INPUT_PATH="data/AAindex1"
 DEFAULT_OUTPUT_PATH="data/"
@@ -86,7 +86,10 @@ def pull_hla_aaindex(dataset):
 
 def pull_label_aaindex(dataset):
     col = [item[2] for item in dataset]
-    result = [0 if item == 'Negative' else 1 for item in col]
+    if type(col[0]) == str:
+        result = [0 if item == 'Negative' else 1 for item in col]
+    else: 
+        result = col
     result = np.expand_dims(np.array(result),axis=1)
     return result
 
@@ -130,6 +133,50 @@ def AAindex_pca_matrix(input_path=DEFAULT_INPUT_PATH, output_path=DEFAULT_OUTPUT
     return None
 # AAindex_pca = np.loadtxt("my_after_pca.txt")
 
+
+def AAindex_encode_dataset(pca, dataset = 'iedb_data.csv'):
+    os.chdir('/home/josh/Dev/Project/')
+
+    ori = pd.read_csv("data/" + dataset)
+
+    if dataset == "sars_cov_2_test.csv":
+        ori.rename(columns={"immunogenicity-con": "immunogenicity"}, inplace=True) 
+        
+    frac = 1 # choose dataset size --> 1 = whole dataset
+    ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
+    
+    hla = pd.read_csv('data/hla2paratopeTable_aligned.txt', sep='\t')
+    hla_dic = hla_df_to_dic(hla)
+    inventory = list(hla_dic.keys())
+    dic_inventory = dict_inventory(inventory)
+
+    AAindex_pca = np.loadtxt('encoders/AAindex_pca.txt')
+    AAindex = np.loadtxt('encoders/AAindex.txt')
+
+    encoding = ["AAindex_pca", "AAindex"]
+    if pca: 
+        encoder = AAindex_pca 
+        i = 0
+    else:
+        encoder = AAindex
+        i = 1
+
+    print("start " + encoding[i] + " encoding")
+    dataset = construct_AAindex_pca(ori, hla_dic, dic_inventory, encoder)
+    # print(np.asarray(dataset[0][0][0]).shape[-1])
+    input1 = pull_peptide_aaindex(dataset)
+    input2 = pull_hla_aaindex(dataset)
+    label = pull_label(dataset)
+    print("finish encoding")
+
+    # save dataset to a file or put these functions inside custom dataset 
+    x1 = torch.from_numpy(input1).to(torch.float32) 
+    x2 = torch.from_numpy(input2).to(torch.float32)
+    y = torch.from_numpy(label).to(torch.float32)
+
+    encoded_dataset = {"x1": x1, "x2": x2, "y": y}
+
+    return encoded_dataset
 
 
 def main():
