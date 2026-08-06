@@ -1,11 +1,12 @@
 '''
-
+This Script runs hyperparameter tuning and bootstrap benchmark for OHE, AAindex, and ESM models
 '''
 
 import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader, RandomSampler, random_split
-
+from torch.utils.data import Dataset, DataLoader, RandomSampler, random_split, Subset
+from sklearn.model_selection import KFold
+import optuna
 
 import numpy as np
 from numpy import random
@@ -15,55 +16,104 @@ from sklearn.metrics import auc,precision_recall_curve,roc_curve,confusion_matri
 import os,sys
 import pickle
 import copy
+import datetime
+
+from encoders.AAindex_pca import * 
+from encoders.ESM import * 
+from encoders.OHE import *
 
 # from encoders.ESM import *
-from models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, ESM_seperateCNN
+from models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, AAindex_pca_seperateCNN, ESM_seperateCNN
 from transformers import AutoTokenizer, EsmModel
 
 
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 
 
-# implement early stopping
-# use epochs = 200, batch size = 128  # specified in dataloader? 
-# need to specify 0.5 threshold in the model 
-# is pred going to be either 1 or 0? or should it be a probability 
-# pred should be a probability
-# early stopping if loss doesn't change for ... steps (accoring to threshold)
-# save model weights whenever loss decreases 
-# restore best model weights 
+def objective(trial, model_fn, train_data): # could just pass it my train data 
+    learning_rate = trial.suggest_float('lr', 1e-4, 1e-1, log=True)
+    batch_size = trial.suggest_int('batch_size', 32, 256)
+    dropout = trial.suggest_float('p', 0.1, 0.5)
+    patience = trial.suggest_int('patience', 0, 20)
+
+    model = model_fn(dropout=dropout)    
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.BCELoss()
+    
+    # produce splits 
+    kf = KFold(n_splits=5)
+
+    # cross validation 
+    for train_set, val_set in kf.split(train_data):
+        data = Subset(train_data, train_set)
+        train_loader = DataLoader(data, batch_size=batch_size, shuffle=True)
+
+        # train
+        model.train()
+        # best_loss = float('inf')
+        early_stopping = EarlyStopping(patience=patience, delta=0, verbose=True)
+        for epoch in range(200): # number of epochs
+            for batch_idx, (data, target) in enumerate(train_loader):
+                optimizer.zero_grad()
+                output = model(data)
+                loss = criterion(output, target)
+                loss.backward()
+                optimizer.step()
+
+            # Check early stopping condition
+            early_stopping.check_early_stop(loss)
+            if early_stopping.stop_training:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
+        
+        # validate
+        data = Subset(train_data, val_set)
+        val_loader = DataLoader(data, batch_size=1, shuffle=True)
+        num_batches = len(val_loader)
+        val_loss = 0
+        model.eval()
+        with torch.no_grad():
+            for data, target in val_loader:
+                output = model(data)
+                val_loss += criterion(output, target).item()
+            val_loss /= num_batches
+        
+    # return mean validation loss
+    return val_loss
 
 
+# split up into train_loop and boostrap?
 def bootstrap(
         train_dataset,
         test_dataset: torch.utils.data.Dataset,   # test set
         model,
+        params,
         loss_fn,
         optimizer,
         n: int,         # size of sample
-        B: int,         # number of samples
-        retrain = False
+        B: int,
+        test_only = False                 # number of samples
         ):
     
 
-    if retrain:
-        #### reset model ####
+    #### reset model & train ####
+    if not test_only:
         # train function zeros optimizer gradients at end of each iteration, so only need to reinitialise model weights
         model.apply(reset_weights) 
         
-        train_dataloader = DataLoader(train_dataset, batch_size=128)
+        train_dataloader = DataLoader(train_dataset, batch_size=params["batch_size"])
         
         epochs = 200
-        best_loss = float('inf')
-        early_stopping = EarlyStopping(patience=2, delta=0, verbose=True)
+        # best_loss = None
+        early_stopping = EarlyStopping(patience=params["patience"], delta=0, verbose=True)
         # best_weights = None
         for epoch in range(epochs):
             # print(f"Epoch {epoch+1}\n-------------------------------")
             loss = train(train_dataloader, model, loss_fn, optimizer, verbose=False, output=True)
-            if loss < best_loss:
-                best_loss = loss
-                # best_weights = copy.deepcopy(model.state_dict())
-    
+            # if loss < best_loss:
+            #     best_loss = loss
+            #     # best_weights = copy.deepcopy(model.state_dict())
+
             # Check early stopping condition
             early_stopping.check_early_stop(loss)
             if early_stopping.stop_training:
@@ -133,6 +183,7 @@ def test(dataloader, model, loss_fn, verbose=False, output=False):
         for X, y in dataloader:
             # X, y = X.to(device), y.to(device)
             pred = model(X)
+            # print("pred and y:", pred, y)
             test_loss += loss_fn(pred, y).item()
             correct += (torch.round(pred) == y).type(torch.float).sum().item()
             # correct += (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -202,158 +253,126 @@ def retain_910(ori):
     return data
 
 
+
 def main():
+    # add command line arguments?
+    HYPERPARAM_OPTIM = True
+    d = datetime.datetime.now()
+    id = str(d.month)+'_'+str(d.day)+'_'+str(d.hour)
+    #PARAMS_FILE = 'model_params.pkl'
+    PARAMS_FILE = 'model_params_'+id+'.pkl'
+    RESULTS_FILE = 'BCE_scores_'+id+'.pkl'
+    TEST_FILE = 'test_BCE_scores_'+id+'.pkl'
+    # FIGURES = True
+    # BOOTSTRAP_FIG = 'bench_fig_no_retrain'
+    # BOOTSTRAP_RETRAIN_FIG = 'bench_fig_retrain'
+
     print("\nstart of program\n")
     os.chdir('/home/josh/Dev/Project/')
 
-    # load data 
+    # Load Data 
     ESM_dataset = torch.load('data/ESM_encoded_samples.pt')
     AAindex_dataset = torch.load('data/AAindex_encoded_samples.pt')
+    AAindex_pca_dataset = torch.load('data/AAindex_pca_encoded_samples.pt')
     OHE_dataset = torch.load('data/OHE_encoded_samples.pt')
-    datasets = [ESM_dataset, AAindex_dataset, OHE_dataset]
+    datasets = [ESM_dataset, AAindex_pca_dataset, AAindex_dataset, OHE_dataset]
 
-    # specify different models here 
-    ESM_model = ESM_seperateCNN()
-    AAindex_model = AAindex_seperateCNN()
-    OHE_model = OHE_seperateCNN()
-    # model.to(device)
-    models = [ESM_model, AAindex_model, OHE_model]
-    model_names = ["ESM", "AAindex", "OHE"]
+    # Model
+    models = [ESM_seperateCNN, AAindex_pca_seperateCNN, AAindex_seperateCNN, OHE_seperateCNN]
+    model_names = ["ESM", "AAindex_pca", "AAindex", "OHE"]
 
     results = {}
+    test_results = {}
 
-    for i, (model, dataset) in enumerate(zip(models,datasets)): 
+    params = []
+    for i, (model, dataset) in enumerate(zip(models, datasets)):
+        data = ImmunoDataset(dataset)
+        train_data, test_data = random_split(data, [0.8,0.2])
+
+        # Hyperparameter optimisation
+        if HYPERPARAM_OPTIM:
+            study = optuna.create_study(study_name=model_names[i]+"_hyperparam_optim",direction='minimize')
+            study.optimize(lambda trial: objective(trial, model, train_data), n_trials=20)  # number of trials: 20
+            print(f"{model_names[i]} Best Hyperparameters: {study.best_params}")
+
+            params.append(study.best_params)
+
+        # Load saved hyperparameters
+        if not HYPERPARAM_OPTIM:
+            with open("data/"+PARAMS_FILE, "rb") as f:
+                params = pickle.load(f)
+
+    
+        # Benchmarking
         print(f"{model_names[i]} Model \n-------------------------------")
-        
-        dataset = ImmunoDataset(dataset)
 
-        # train test split
-        train_data, test_data = random_split(dataset, [0.8,0.2])
-
-        # loss_fn = nn.CrossEntropyLoss()
+        model = model(dropout=params[i]["p"])
         loss_fn = nn.BCELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(model.parameters(), lr=params[i]["lr"])
 
-        # bootstrap
-        # log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=False) # n=len(test_data), B=1000)
-        # print("bootstrap mean:", mean)
-        # print("bootstrap se:", se)
-        # print(f"confidence interval:\n {CI} \n\n")
-        # results[("no_retrain", model_names[i])] = log_scores
 
+        # bootstrap with 10 repeats for retraining 
+        # use first run as values for bootstrap without retraining
         for j in range(10):
-            log_scores, CI, mean, se = bootstrap(train_data, test_data, model, loss_fn, optimizer, n=len(test_data), B=100, retrain=True)
+            log_scores, CI, mean, se = bootstrap(train_data, test_data, model, params[i], loss_fn, optimizer, n=len(test_data), B=100, test_only=False)
             print("bootstrap mean:", mean)
             print("bootstrap se:", se)
             print(f"confidence interval:\n {CI} \n\n")
             results[(j, model_names[i])] = log_scores
 
-        # remove skew ??
-        # log_scores = np.log(log_scores) # natural logarithm
+
+        # loop through extra test sets 
+        test_sets = ['sars_cov_2_test.csv', 'dengue_test.csv', 'neoantigen_test.csv']
+        test_set_names = ['sars_cov_2', 'dengue', 'neoantigen']
+        for k, test_set in enumerate(test_sets):
+            print(f"\n-------------------------------\n {model_names[i]} Model : TEST set benchmarking \n-------------------------------")
+            
+            # encode test set
+            encoders = [esm_encode_dataset, 
+                        AAindex_encode_dataset, 
+                        AAindex_encode_dataset, 
+                        ohe_encode_dataset]
+
+            encoder = encoders[i]
+            if (model_names[i] == "AAindex_pca"):
+                encoded_test_set = encoder(pca=True, dataset=test_set)
+            elif (model_names[i] == "AAindex"):
+                encoded_test_set = encoder(pca=False, dataset=test_set)
+            else: 
+                encoded_test_set = encoder(dataset=test_set)
+            encoded_test_set = ImmunoDataset(encoded_test_set)
+            # _,y = encoded_test_set.__getitem__(10) ########### DELETE ################
+            # print("CHECK y:", y)
 
 
-        # plot log scores distribution
-        # plt.hist(log_scores, bins=10, density=True) # range=(0, CI[1]+se)
-        # plt.title("Histogram of ESM encoder model log scores")
-        # plt.xlabel("log score")
-        # plt.ylabel("density")
-        # plt.savefig("LogScoreDist.png")
+            # bootstrap validate on test set
+            for j in range(10):
+                log_scores, CI, mean, se = bootstrap(None, encoded_test_set, model, params[i], loss_fn, None, n=len(encoded_test_set), B=100, test_only=True)
+                print("bootstrap mean:", mean)
+                print("bootstrap se:", se)
+                print(f"confidence interval:\n {CI} \n\n")
+                test_results[(j, model_names[i], test_set_names[k])] = log_scores
 
+
+    # save optimised hyperparameters to disk
+    if HYPERPARAM_OPTIM:
+        with open("data/"+PARAMS_FILE, "wb") as f:
+            pickle.dump(params, f)
 
     # save log scores dictionary to disk
-    with open("new_name.pkl", "wb") as f:  # "bootstrap_tain_avg.pkl"
+    with open("data/"+RESULTS_FILE, "wb") as f:  # "bootstrap_tain_avg.pkl"
         pickle.dump(results, f)
+
+    # save log scores dictionary to disk
+    with open("data/"+TEST_FILE, "wb") as f:  # "bootstrap_tain_avg.pkl"
+        pickle.dump(test_results, f)
+
+    # Produce figures
+    # if FIGURES:
+    #     ...
+
+
         
-
-    return None
-
-
-    print(dataset.keys())
-    print(dataset['x1'].size(), dataset['x2'].size(), dataset['y'].size())
-    print(dataset['x1'][1,:,:,:].size(), dataset['x2'][1,:,:,:].size(), len(dataset['y']))
-    print(len(train_data), len(test_data))
-
-#####################################################################################################
-
-    # let's do a train/validation split
-    bucket_roc = []
-    bucket_pr = []
-    for i in range(10):
-        array = np.arange(len(dataset))
-        train_index = np.random.choice(array,int(len(dataset)*0.9),replace=False)  # change replace to True and effectively got bootstrap
-        valid_index = [item for item in array if item not in train_index]   # OOB 
-
-        input1_train = input1[train_index]
-        input1_valid = input1[valid_index]
-        input2_train = input2[train_index]
-        input2_valid = input2[valid_index]
-        label_train = label[train_index]
-        label_valid = label[valid_index]
-
-
-        import tensorflow.keras as keras
-        cnn_model = seperateCNN()
-        cnn_model.compile(
-            loss=keras.losses.MeanSquaredError(),
-            optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-            metrics=['accuracy'])
-
-        callback_val = keras.callbacks.EarlyStopping(monitor='val_loss', patience=15,restore_best_weights=False)
-        callback_train = keras.callbacks.EarlyStopping(monitor='loss',patience=2,restore_best_weights=False)
-        history = cnn_model.fit(
-            x=[input1_train,input2_train],   # feed a list into
-            y=label_train,
-            validation_data = ([input1_valid,input2_valid],label_valid),
-            batch_size=128,
-            epochs=200,
-            class_weight = {0:0.5,1:0.5},   # I have 20% positive and 80% negative in my training data  # really??
-            callbacks = [callback_val,callback_train])
-
-        valid = ori.loc[valid_index]
-        valid['cnn_regress'] = cnn_model.predict([input1_valid,input2_valid])
-        valid = valid.sort_values(by='cnn_regress',ascending=False).set_index(pd.Index(np.arange(valid.shape[0])))
-        y_true = [1 if not item == 'Negative' else 0 for item in valid['immunogenicity']]
-        y_pred = valid['cnn_regress']
-
-        fpr,tpr,_ = roc_curve(y_true,y_pred)
-        area = auc(fpr,tpr)
-        bucket_roc.append((fpr,tpr,_,area))
-
-        precision, recall, _ = precision_recall_curve(y_true, y_pred)
-        area = auc(recall, precision)
-        bucket_pr.append((precision, recall, _, area))
-
-    # ROC
-    bucket = bucket_roc
-    fig,ax = plt.subplots()
-    for i in range(10):
-        ax.plot(bucket[i][0],bucket[i][1],lw=0.5,label='CV(Fold={0}), AUC={1:.2f}'.format(i+1,bucket[i][3]))
-    ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('False Positive Rate')
-    ax.set_ylabel('True Positive Rate')
-    ax.set_title('Receiver operating characteristic')
-    ax.legend(loc="lower right",fontsize=9)
-    plt.savefig("DeepImmuno_ROC_esm.png")
-
-    # PR
-    bucket = bucket_pr
-    fig,ax = plt.subplots()
-    for i in range(10):
-        ax.plot(bucket[i][1],bucket[i][0],lw=0.5,label='CV(Fold={0}),AUC={1:.2f}'.format(i+1,bucket[i][3]))
-    #baseline = np.sum(np.array(y_true) == 1) / len(y_true)  # 0.4735
-    baseline = 0.4735
-    ax.plot([0, 1], [baseline, baseline], color='navy', lw=2, linestyle='--')
-    ax.set_xlim([0.0, 1.0])
-    #ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('Recall')
-    ax.set_ylabel('Precision')
-    ax.set_title('PR curve example')
-    ax.legend(loc="lower left",fontsize=8)
-    plt.savefig("DeepImmuno_PR_esm.png")
-
-    return None
 
 
 if __name__ == '__main__':
