@@ -1,1 +1,16 @@
+*/__pycache__/
+
+# project directories to ignore 
 Reference/
+data/
+figures/
+old/
+
+encoders/*ImmunoStruct*
+
+*.sh
+*.txt
+*.yml
+
+# Software used for CNN schematics 
+PlotNeuralNet-master/
