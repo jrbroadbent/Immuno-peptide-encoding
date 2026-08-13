@@ -32,7 +32,7 @@ def main():
     d = datetime.datetime.now()
     id = str(d.month)+'_'+str(d.day)+'_'+str(d.hour)
     
-    with open("data/test_BCE_scores_8_4_11.pkl", "rb") as f: #"data/final_bootstrap_log_scores2.pkl"
+    with open("data/test_BCE_scores_8_9_20.pkl", "rb") as f:   #"data/BCE_scores_8_7_12.pkl"   "data/final_bootstrap_log_scores2.pkl"
         results = pickle.load(f)
     # 3 test datasets 
     # 4 models
@@ -42,6 +42,7 @@ def main():
 
     dataset_names = ["sars_cov_2", "dengue", "neoantigen"]
     model_names = ["ESM", "AAindex_pca", "AAindex", "OHE"]
+    model_labels = ["ESM", "AAindex + pca", "AAindex", "OHE"]
     colours = ["magenta", "purple", "blue", "red"]
     labels = ["single", "repeated"]
 
@@ -65,10 +66,30 @@ def main():
         print(np.mean(results[(0, "OHE", dataset)]))
 
 
-    # produce separate figure for each dataset 
-    for j, dataset in enumerate(dataset_names):
-        fig, ax = plt.subplots(1,1, figsize=(5,5))
 
+    fig, ax = plt.subplots(2,2, figsize=(10, 10))
+
+
+    plot_labels = ['A', 'B', 'C']
+    for row in range(2):
+        for col in range(2):
+            if ((not row == 1) or (not col == 1)):
+                ax[row, col].annotate(f'{plot_labels[row*2+col]}', (0.1, 0.93),
+                                    xycoords = 'axes fraction',
+                                    fontsize=14,
+                                    fontweight='bold',
+                                    color='black')
+
+
+    for j, dataset in enumerate(dataset_names):
+
+        if j == 0:
+            axis = ax[0][0]
+        elif j == 1:
+            axis = ax[0][1]
+        elif j == 2:
+            axis = ax[1][0]
+        
         all_scores = []
         for i, key in enumerate(keys_split[j]):
                 log_scores = results[key]
@@ -78,28 +99,29 @@ def main():
                 lower_bound = CI[0]
 
                 if key[0] == 0:
-                    plt.errorbar(i/10, mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="o", ms=3, lw=0, capsize=3, c=colours[int(i/10)], label=labels[0])
+                    axis.errorbar(i, mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="o", ms=3, lw=0, capsize=3, c=colours[int(i)], label=labels[0])
 
                 all_scores.append(log_scores)
 
                 # plot average for last repeat of each model (10 repeats total)
-                if key[0] == 9:
-                    # calculate mean and CI
-                    mean = np.mean(all_scores)
-                    CI = np.percentile(all_scores, [2.5,97.5])
-                    upper_bound = CI[1]
-                    lower_bound = CI[0]
+                # if key[0] == 9:
+                #     # calculate mean and CI
+                #     mean = np.mean(all_scores)
+                #     CI = np.percentile(all_scores, [2.5,97.5])
+                #     upper_bound = CI[1]
+                #     lower_bound = CI[0]
 
-                    # plot 
-                    plt.errorbar( ( (i-9)/10 + 0.5 ), mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="x", ms=5, lw=0, capsize=3, c=colours[int((i-9)/10)], label=labels[1])
+                #     # plot 
+                #     plt.errorbar( ( (i-9)/10 + 0.5 ), mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="x", ms=5, lw=0, capsize=3, c=colours[int((i-9)/10)], label=labels[1])
 
-                    # clear all_scores for next model
-                    all_scores = []
+                #     # clear all_scores for next model
+                #     all_scores = []
 
-                    print(key, np.round(CI, decimals=3))
+                #     print(key, np.round(CI, decimals=3))
 
 
-        plt.xticks([0.25, 1.25, 2.25, 3.25], model_names) #0, 0.5   1.0, 1.5   2, 2.5,  3, 3.5
+        # plt.xticks([0.25, 1.25, 2.25, 3.25], model_labels) #0, 0.5   1.0, 1.5   2, 2.5,  3, 3.5
+        axis.set_xticks([0, 1, 2, 3], model_labels) #0, 0.5   1.0, 1.5   2, 2.5,  3, 3.5
 
         # Add significance comparisons (example p-values)
         #add_sig_bracket(axis, 0.5, 1.5, 7)
@@ -110,17 +132,23 @@ def main():
         # axis.spines['right'].set_visible(False)
 
 
-        plt.ylabel("Mean BCE")
+        axis.set_ylabel("Mean BCE")
 
         # add legend for single and repeated 
         markers = [Line2D([0], [0], marker= "o", color='w', markerfacecolor='k', markersize=7),
                 Line2D([0], [0], marker= "X", color='w', markerfacecolor='k', markersize=7)]
-        plt.legend(markers, labels)
 
-        plt.subplots_adjust(wspace=0.3, bottom=0.15)
+        # if j ==0:
+        #     axis.legend(markers, labels)
 
-        fig.tight_layout()
-        fig.savefig("figures/"+dataset+"_BCE_scores_"+id+".png") # "figures/bootstrap_fig_sig_brackets.png"
+
+    ax[1,1].set_visible(False)
+
+
+    fig.subplots_adjust(wspace=0.2, hspace=0.15, bottom=0.05, left=0.05, top=0.99, right=0.99)
+    # fig.tight_layout()
+
+    fig.savefig("figures/test_BCE_scores_"+id+".png") # "figures/bootstrap_fig_sig_brackets.png"
 
 
 
