@@ -7,6 +7,7 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader, RandomSampler, random_split, Subset
 from sklearn.model_selection import KFold
 import optuna
+import optunahub 
 
 import numpy as np
 from numpy import random
@@ -256,11 +257,11 @@ def retain_910(ori):
 
 def main():
     # add command line arguments?
-    HYPERPARAM_OPTIM = True
+    HYPERPARAM_OPTIM = False
     d = datetime.datetime.now()
     id = str(d.month)+'_'+str(d.day)+'_'+str(d.hour)
-    #PARAMS_FILE = 'model_params.pkl'
-    PARAMS_FILE = 'model_params_'+id+'.pkl'
+    PARAMS_FILE = 'original_params.pkl'
+    #PARAMS_FILE = 'model_params_'+id+'.pkl'
     RESULTS_FILE = 'BCE_scores_'+id+'.pkl'
     TEST_FILE = 'test_BCE_scores_'+id+'.pkl'
     # FIGURES = True
@@ -291,8 +292,9 @@ def main():
 
         # Hyperparameter optimisation
         if HYPERPARAM_OPTIM:
-            study = optuna.create_study(study_name=model_names[i]+"_hyperparam_optim",direction='minimize')
-            study.optimize(lambda trial: objective(trial, model, train_data), n_trials=20)  # number of trials: 20
+            module = optunahub.load_module(package="samplers/auto_sampler")
+            study = optuna.create_study(study_name=model_names[i]+"_hyperparam_optim", sampler=module.AutoSampler(), direction='minimize')
+            study.optimize(lambda trial: objective(trial, model, train_data), n_trials=100)  # number of trials: 100-1000
             print(f"{model_names[i]} Best Hyperparameters: {study.best_params}")
 
             params.append(study.best_params)
@@ -341,12 +343,11 @@ def main():
             else: 
                 encoded_test_set = encoder(dataset=test_set)
             encoded_test_set = ImmunoDataset(encoded_test_set)
-            # _,y = encoded_test_set.__getitem__(10) ########### DELETE ################
             # print("CHECK y:", y)
 
 
             # bootstrap validate on test set
-            for j in range(10):
+            for j in range(1): # no repeats for test sets 
                 log_scores, CI, mean, se = bootstrap(None, encoded_test_set, model, params[i], loss_fn, None, n=len(encoded_test_set), B=100, test_only=True)
                 print("bootstrap mean:", mean)
                 print("bootstrap se:", se)
