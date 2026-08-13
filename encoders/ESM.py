@@ -123,7 +123,7 @@ def esm_encode_dataset(dataset = 'iedb_data.csv'):
         ori.rename(columns={"immunogenicity-con": "immunogenicity"}, inplace=True) 
         
     frac = 1 # choose dataset size --> 1 = whole dataset
-    ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.ceil(ori.shape[0]*frac)))) # random sample, re-initialising indices  
+    ori = ori.sample(frac=frac, replace=False).set_index(pd.Index(np.arange(np.round(ori.shape[0]*frac)))) # random sample, re-initialising indices  
 
     hla = pd.read_csv('./data/hla2paratopeTable_aligned.txt', sep='\t')
     hla_dic = hla_df_to_dic(hla)

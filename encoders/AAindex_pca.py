@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import os
 import glob
-# from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+#from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 # need this version if running in main
 from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
@@ -81,16 +81,6 @@ def pull_hla_aaindex(dataset):
     result = np.empty([len(dataset),1,46,dim])
     for i in range(len(dataset)):
         result[i,:,:,:] = dataset[i][1]
-    return result
-
-
-def pull_label_aaindex(dataset):
-    col = [item[2] for item in dataset]
-    if type(col[0]) == str:
-        result = [0 if item == 'Negative' else 1 for item in col]
-    else: 
-        result = col
-    result = np.expand_dims(np.array(result),axis=1)
     return result
 
 
@@ -181,7 +171,7 @@ def AAindex_encode_dataset(pca, dataset = 'iedb_data.csv'):
 
 def main():
     print("start of program")
-    PRODUCE_MATRICES = True
+    PRODUCE_MATRICES = False
 
     os.chdir('/home/josh/Dev/Project/')
 
@@ -209,7 +199,7 @@ def main():
         # print(np.asarray(dataset[0][0][0]).shape[-1])
         input1 = pull_peptide_aaindex(dataset)
         input2 = pull_hla_aaindex(dataset)
-        label = pull_label_aaindex(dataset)
+        label = pull_label(dataset)
         print("finish encoding")
 
         # save dataset to a file or put these functions inside custom dataset 
