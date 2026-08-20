@@ -171,3 +171,27 @@ class OHE_seperateCNN(nn.Module):
         logits = self.combined(combined)
         return logits 
 
+class Linear_Classifier(nn.Module):
+    def __init__(self,size):
+        super().__init__()
+        # self.linear = nn.Linear(640,1),
+        # self.sig = nn.Sigmoid()
+
+        self.linear = nn.Sequential(
+            nn.Linear(size,1),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, x):
+            x1 = x[0].squeeze()
+            x2 = x[1].squeeze()
+            x1_mean = torch.mean(x1,0)
+            x2_mean = torch.mean(x2,0)
+            combined = torch.cat((x1_mean, x2_mean), 0)
+            # logits = self.linear(combined)
+            # prob = self.sig(logits)
+            # return (logits, prob) 
+
+            prob = self.linear(combined)
+
+            return prob
