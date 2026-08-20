@@ -171,27 +171,30 @@ class OHE_seperateCNN(nn.Module):
         logits = self.combined(combined)
         return logits 
 
-class Linear_Classifier(nn.Module):
-    def __init__(self,size):
-        super().__init__()
-        # self.linear = nn.Linear(640,1),
-        # self.sig = nn.Sigmoid()
 
+class Linear_Classifier(nn.Module):
+    def __init__(self, size):
+        super().__init__()
         self.linear = nn.Sequential(
             nn.Linear(size,1),
             nn.Sigmoid()
         )
         
     def forward(self, x):
-            x1 = x[0].squeeze()
-            x2 = x[1].squeeze()
-            x1_mean = torch.mean(x1,0)
-            x2_mean = torch.mean(x2,0)
-            combined = torch.cat((x1_mean, x2_mean), 0)
-            # logits = self.linear(combined)
-            # prob = self.sig(logits)
-            # return (logits, prob) 
+            # x[0] has shape [batch_size,1,L,D] --> squeeze dim 1 to get [batch_size,L,D] --> mean dim 1 to get [batch_size,D]
+            x1 = torch.squeeze(x[0], 1) 
+            x2 = torch.squeeze(x[1], 1)
+
+            # Take mean over sequence positions
+            x1_mean = torch.mean(x1, dim=1) 
+            x2_mean = torch.mean(x2, dim=1)
+            # print("x1_mean size:",x1_mean.size()) # batch_size, 320
+            # print("x2_mean size:", x2_mean.size()) # batch_size, 320
+            
+            combined = torch.cat((x1_mean, x2_mean), dim=1)
+            # print("combined size:", combined.size()) # batch_size, 640
 
             prob = self.linear(combined)
 
             return prob
+
