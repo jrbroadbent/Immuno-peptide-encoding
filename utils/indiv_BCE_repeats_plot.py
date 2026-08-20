@@ -1,6 +1,3 @@
-'''
-Plotting script for IEDB test set BCE loss scores 
-'''
 import pickle 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -34,10 +31,8 @@ def main():
     os.chdir('/home/josh/Dev/Project/')
     d = datetime.datetime.now()
     id = str(d.month)+'_'+str(d.day)+'_'+str(d.hour)
-
-    # optuna hyperparameter results: "data/BCE_scores_8_7_12.pkl"
-    # original hyperparameter results: "data/BCE_scores_8_9_20.pkl"
-    with open("data/BCE_scores_8_7_12.pkl", "rb") as f:
+    
+    with open("data/test_BCE_scores_8_9_20.pkl", "rb") as f:   #"data/BCE_scores_8_7_12.pkl"   "data/final_bootstrap_log_scores2.pkl"
         results = pickle.load(f)
 
     # print(results.keys())
@@ -48,66 +43,62 @@ def main():
 
 
     model_names = ["ESM", "AAindex_pca", "AAindex", "OHE"]
-    model_labels = ["ESM", "AAindex + PCA", "AAindex", "OHE"]
+    model_labels = ["ESM", "AAindex + pca", "AAindex", "OHE"]
     colours = ["magenta", "purple", "blue", "red"]
 
-    fig, ax = plt.subplots(1,1, figsize=(5,5))
+
+    n = int( len(results.keys())/len(model_names) )
+    keys_split = []
+    for i in range(n):
+        for model in model_names:
+            key = (i, model) 
+            keys_split.append(key)  # keys ordered by repeat iteration, rather than grouped by model
+
+    print()
+
+    fig, ax = plt.subplots(1,1, figsize=(50,5))
 
     labels = ["single", "repeated"]
 
-    single_scores = []
-    repeat_scores = []
     all_scores = []
-    for i, key in enumerate(results.keys()):
+    for i, key in enumerate(keys_split):
             log_scores = results[key]
             mean = np.mean(log_scores)
             CI = np.percentile(log_scores, [2.5,97.5])
             upper_bound = CI[1]
             lower_bound = CI[0]
+            log_max = max(log_scores)
+            log_min = min(log_scores)
 
-            if key[0] == 0:
-                print(f"{i}  {i/10}  \t", end=" ")
-            elif key[0] == 9:
-                print(f"{i}  {(i-9)/10 + 0.5}  \t", end=" ")
-            else:
-                print("\t\t", end=" ")
-            print(key, "\t", np.round(mean, decimals=3), "\t", np.round(CI, decimals=3))
-
-            if key[0] == 0:
-                single_scores.append(log_scores)   
-                ax.errorbar(i/10, mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="o", ms=3, lw=0, capsize=3, c=colours[i//10], label=labels[0])
-
+ 
+            ax.errorbar(i, mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="o", ms=3, lw=0, capsize=3, c=colours[i%4])
+            ax.plot(i, log_max, marker='x', c=colours[i%4])
+            ax.plot(i, log_min, marker='x', c=colours[i%4])
             all_scores.append(log_scores)
 
+            if (i%4 == 0):
+                ax.axvline(i-0.5, ls='--')
+
             # plot average for last repeat of each model (10 repeats total)
-            if key[0] == 9:
-                # print(len(all_scores), len(all_scores[0]))
-                # calculate mean and CI
-                mean = np.mean(all_scores)
-                CI = np.percentile(all_scores, [2.5,97.5])
-                upper_bound = CI[1]
-                lower_bound = CI[0]
+            # if key[0] == 9:
+            #     # calculate mean and CI
+            #     mean = np.mean(all_scores)
+            #     CI = np.percentile(all_scores, [2.5,97.5])
+            #     upper_bound = CI[1]
+            #     lower_bound = CI[0]
 
-                # plot 
-                ax.errorbar( ( (i-9)/10 + 0.5 ), mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="x", ms=5, lw=0, capsize=3, c=colours[int((i-9)/10)], label=labels[1])
+            #     # plot 
+            #     ax.errorbar( ( (i-9)/10 + 0.5 ), mean, yerr=[[mean-lower_bound],[upper_bound-mean]], elinewidth=1, marker="x", ms=5, lw=0, capsize=3, c=colours[int((i-9)/10)], label=labels[1])
 
-                repeat_scores.append(np.array(all_scores).reshape(-1))
+            #     # clear all_scores for next model
+            #     all_scores = []
 
-                # clear all_scores for next model
-                all_scores = []
-            
-                print(key, np.round(CI, decimals=3))
+            #     print(key, np.round(CI, decimals=3))
 
-
-    # plot violin plots
-    # print(len(repeat_scores), len(repeat_scores[0]), len(single_scores), len(single_scores[0]))
-    # positions = [i for i in range(4)]
-    # ax.violinplot(single_scores, positions)
-    # ax.violinplot(repeat_scores, [x+0.5 for x in positions])
 
     
     #axis.set_xticks(range(len(model_names)), model_names) #, rotation=20)
-    ax.set_xticks([0.25, 1.25, 2.25, 3.25], model_labels) #0, 0.5   1.0, 1.5   2, 2.5,  3, 3.5
+    ax.set_xticks([i for i in range(len(results.keys()))], [model for model in model_labels*n]) #0, 0.5   1.0, 1.5   2, 2.5,  3, 3.5
     # axis.set_xticks(range(len(labels)), labels, rotation=20)
 
     # Add significance comparisons (example p-values)
@@ -130,10 +121,7 @@ def main():
     plt.subplots_adjust(wspace=0.3, bottom=0.15)
 
     fig.tight_layout()
-    FILE = "figures/IEDB_BCE_scores_"+id+".png"
-    fig.savefig(FILE) # "figures/bootstrap_fig_sig_brackets.png"
-
-    print(f"\nfigure saved to: {FILE}\n")
+    fig.savefig("figures/BCE_repeats_"+id+".png") # "figures/bootstrap_fig_sig_brackets.png"
 
 
 
