@@ -1,16 +1,20 @@
 */__pycache__/
 
-# # project directories to ignore 
-# Reference/
-# data/
-# figures/
-# old/
+*venv.txt
 
-# encoders/*ImmunoStruct*
+utils/plotting.py 
+utils/test_plot2.py
 
-# *.sh
-# *.txt
-# *.yml
+encoders/*.txt
+encoders/*.yml
 
-# # Software used for CNN schematics 
-# PlotNeuralNet-master/
+data/*encoded*
+data/*scores_[0-9]*
+data/*params_[0-9]*
+
+# Ignore reference repositories
+Reference/
+encoders/ImmunoStruct*
+PlotNeuralNet-master/
+
+time_process.sh
