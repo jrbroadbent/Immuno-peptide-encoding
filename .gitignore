@@ -5,12 +5,14 @@
 utils/plotting.py 
 utils/test_plot2.py
 
-encoders/*.txt
+encoders/*requirements.txt
 encoders/*.yml
 
 data/*encoded*
 data/*scores_[0-9]*
 data/*params_[0-9]*
+data/*bootstrap*
+data/after_pca.txt
 
 # Ignore reference repositories
 Reference/
