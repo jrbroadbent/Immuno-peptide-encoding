@@ -256,12 +256,10 @@ def retain_910(ori):
 
 
 def main():
-    # add command line arguments?
-    HYPERPARAM_OPTIM = False
     d = datetime.datetime.now()
     id = str(d.month)+'_'+str(d.day)+'_'+str(d.hour)
-    PARAMS_FILE = 'original_params.pkl'
-    #PARAMS_FILE = 'model_params_'+id+'.pkl'
+    HYPERPARAM_OPTIM = False
+    PARAMS_FILE = 'original_params.pkl' # for batch size
     RESULTS_FILE = 'BCE_scores_'+id+'.pkl'
     TEST_FILE = 'test_BCE_scores_'+id+'.pkl'
 
@@ -275,10 +273,11 @@ def main():
     AAindex_pca_dataset = torch.load('data/AAindex_pca_encoded_samples.pt')
     OHE_dataset = torch.load('data/OHE_encoded_samples.pt')
     datasets = [ESM_dataset, AAindex_pca_dataset, AAindex_dataset, OHE_dataset]
+    dataset_names = ["ESM", "AAindex + PCA", "AAindex", "OHE"]
 
     # Model
-    model = Linear_Classifier
-    model_names = ["Linear Classifier"]
+    model_class = Linear_Classifier
+    model_name = "Linear Classifier"
 
     results = {}
     test_results = {}
@@ -288,24 +287,6 @@ def main():
 
         data = ImmunoDataset(dataset)
         train_data, test_data = random_split(data, [0.8,0.2])
-
-        # Hyperparameter optimisation
-        if HYPERPARAM_OPTIM:
-            module = optunahub.load_module(package="samplers/auto_sampler")
-            study = optuna.create_study(study_name=model_names[i]+"_hyperparam_optim", sampler=module.AutoSampler(), direction='minimize')
-            study.optimize(lambda trial: objective(trial, model, train_data), n_trials=100)  # number of trials: 100-1000
-            print(f"{model_names[i]} Best Hyperparameters: {study.best_params}")
-
-            params.append(study.best_params)
-
-        # Load saved hyperparameters
-        if not HYPERPARAM_OPTIM:
-            with open("data/"+PARAMS_FILE, "rb") as f:
-                params = pickle.load(f)
-
-    
-        # Benchmarking
-        print(f"{model_names[i]} Model \n-------------------------------")
 
         #### DEBUG ####
         X, y = train_data.__getitem__(0)
@@ -320,7 +301,26 @@ def main():
         print(combined.size())
         ####################
 
-        model = model(size=size)
+        model = model_class(size=size)
+
+        # Hyperparameter optimisation
+        if HYPERPARAM_OPTIM:
+            module = optunahub.load_module(package="samplers/auto_sampler")
+            study = optuna.create_study(study_name=model_name+"_"+dataset_names[i]+"_hyperparam_optim", sampler=module.AutoSampler(), direction='minimize')
+            study.optimize(lambda trial: objective(trial, model, train_data), n_trials=100)  # number of trials: 100-1000
+            print(f"{model_name} {dataset_names[i]} Best Hyperparameters: {study.best_params}")
+
+            params.append(study.best_params)
+
+        # Load saved hyperparameters
+        if not HYPERPARAM_OPTIM:
+            with open("data/"+PARAMS_FILE, "rb") as f:
+                params = pickle.load(f)
+
+    
+        # Benchmarking
+        print(f"{model_name} Model, {dataset_names[i]} Dataset\n-------------------------------")
+
         loss_fn = nn.BCELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=params[i]["lr"])
 
@@ -332,7 +332,7 @@ def main():
             print("bootstrap mean:", mean)
             print("bootstrap se:", se)
             print(f"confidence interval:\n {CI} \n\n")
-            results[(j, model_names[i])] = log_scores
+            results[(j, dataset_names[i])] = log_scores
 
 
         # loop through extra test sets 
