@@ -1,22 +1,24 @@
-*/__pycache__/
+*__pycache__*
+
+Submission/
 
 *venv.txt
 
-utils/plotting.py 
-utils/test_plot2.py
+benchmark/utils/plotting.py 
+benchmark/utils/test_plot2.py
 
-encoders/*requirements.txt
-encoders/*.yml
+benchmark/encoders/*requirements.txt
+benchmark/encoders/*.yml
 
-data/*encoded*
-data/*scores_[0-9]*
-data/*params_[0-9]*
-data/*bootstrap*
-data/after_pca.txt
+benchmark/data/*encoded*
+benchmark/data/*scores_[0-9]*
+benchmark/data/*params_[0-9]*
+benchmark/data/*bootstrap*
+benchmark/data/after_pca.txt
 
 # Ignore reference repositories
 Reference/
-encoders/ImmunoStruct*
+benchmark/encoders/ImmunoStruct*
 PlotNeuralNet-master/
 
 time_process.sh
