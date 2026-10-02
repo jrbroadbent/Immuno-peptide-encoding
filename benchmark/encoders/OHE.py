@@ -1,14 +1,12 @@
 '''
-Encoder using One-Hot Encoding (OHE) of protein seqeunces
+Encoder using One-Hot Encoding (OHE) of peptide seqeunces
 '''
 
 import os
 import torch
 import numpy as np
 import pandas as pd
-# from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
-# need this version if running in main
-from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
 
 def one_hot_encoder(peptide):

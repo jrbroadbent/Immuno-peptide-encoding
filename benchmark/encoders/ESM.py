@@ -1,22 +1,12 @@
 '''
-Encoder using ESM protein seqeunce embeddings
-both ESM Cambria with 300M parameters 
-and ESM ... with 8M parameters
-
-run as main to produce dataset with ESM encodings
-saved in ESM_encoded_samples.pt
-
-run:
-python encoders/ESM.py
+Encoder using ESM peptide seqeunce embeddings
 '''
 
 import numpy as np
 import pandas as pd
 from esm.models.esmc import ESMC
 from esm.sdk.api import ESMProtein, LogitsConfig
-# from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
-# need this version if running from main
-from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
 from transformers import AutoTokenizer, EsmModel
 import torch

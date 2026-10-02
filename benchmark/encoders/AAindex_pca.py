@@ -9,9 +9,7 @@ import numpy as np
 import pandas as pd
 import os
 import glob
-#from util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
-# need this version if running in main
-from .util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
 DEFAULT_INPUT_PATH="data/AAindex1"
 DEFAULT_OUTPUT_PATH="data/"
