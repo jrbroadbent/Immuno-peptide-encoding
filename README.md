@@ -25,12 +25,12 @@ pip install -r requirements.txt
 <br>
 
 ## Usage 
-Encoded datasets can be generated with:
+1. Encoded datasets can be generated with:
 ```bash
 python -m benchmark.encoders.<ESM | AAindex_pca | OHE>
 ```
 
-The controlled comparison can be run with `Project/` as the working directory with:
+2. The controlled comparison can be run with `Project/` as the working directory with:
 ```bash
 python -m benchmark.main [options]
 ```
