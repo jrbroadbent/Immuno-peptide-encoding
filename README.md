@@ -30,8 +30,33 @@ Encoded datasets can be generated with:
 python -m benchmark.encoders.<ESM | AAindex_pca | OHE>
 ```
 
-The controlled comparison can be run with Project/ as the working directory with:
+The controlled comparison can be run with `Project/` as the working directory with:
 ```bash
 python -m benchmark.main [options]
 ```
-> **Note:** Requires that encoded datasets have been generated (see previous step) 
+> **Note:** Requires that encoded datasets have been generated (see previous step)
+
+The behaviour of `main` can be configured via command line arguments:
+```
+usage: main.py [-h] [-o | -s SAVED] [-p PARAMSF] [-r RESULTSF] [-t TESTF]
+               [--epochs EPOCHS] [--repeats REPEATS] [-B B] [-n N]
+
+options:
+  -h, --help            show this help message and exit
+  -o, --optim           optimise model hyperparameters
+  -s SAVED, --saved SAVED
+                        pickle file with saved hyperparamters
+  -p PARAMSF, --paramsf PARAMSF
+                        pickle file to save model hyperparameters. If --optim
+                        then specify file with saved model parameters
+  -r RESULTSF, --resultsf RESULTSF
+                        pickle file to store benchmark results on IEDB dataset
+  -t TESTF, --testf TESTF
+                        pickle file to store benchmark results on test
+                        datasets
+  --epochs EPOCHS       number of training epochs
+  --repeats REPEATS     number of repeats
+  -B B                  number of bootstrap iterations
+  -n N                  fraction of dataset to resample in bootstrap
+                        resampling
+```
