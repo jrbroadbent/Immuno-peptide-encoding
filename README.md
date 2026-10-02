@@ -8,7 +8,7 @@ The peptide amino acid sequence must be converted into a numeric format to be us
 <br>
 
 ## Repository Status
-> **Disclaimer:** This repository contains experimental research code. The codebase has not yet been refactored for production, and configuration options (such as swapping I/O files) are currently handled directly within the source scripts rather than via command-line arguments.
+> **Disclaimer:** This repository contains experimental research code. The codebase has not yet been refactored for production.
 
 <br>
 
