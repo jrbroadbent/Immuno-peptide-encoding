@@ -9,7 +9,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.x'  # specify exact version I used (can expand to support other versions later)
+        python-version: '3.12.3'  # specify exact version I used (can expand to support other versions later)
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
