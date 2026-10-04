@@ -13,20 +13,6 @@ import torch
 import os
 
 
-# from transformers import EsmModel # from hugging face
-# client = EsmModel.from_pretrained("facebook/esm2_t6_8M_UR50D")
-# client = ESM.from_pretrained("esm2_t6_8M_UR50D")
-
-# def esm2_8M_embedding(peptide, client):
-#     lm = client # lm,_ = esm.pretrained.load_model_and_alphabet("esm2_t6_8M_UR50D")
-#     idx = lm.num_layers 
-#     embedding = lm(peptide, repr_layers=idx)["representations"][idx]  # get representation from last layer
-#     return embedding
-
-
-# model_name = "facebook/esm2_t6_8M_UR50D"
-# client = EsmModel.from_pretrained(model_name)
-# tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # esm2_8M_embedding 
 def esm_embedding(peptide, client, tokenizer):
@@ -38,18 +24,6 @@ def esm_embedding(peptide, client, tokenizer):
     embedding = outputs.last_hidden_state 
     # embedding = embedding.squeeze(0).unsqueeze(-1)
     return embedding  # [1, len(peptide)+2, 320]
-
-# # esmC_300M_embedding
-# def esm2_embedding(peptide, client):
-#     client = client # ESMC.from_pretrained("esmc_300m").to("cpu") # "cpu" or "cuda"
-#     protein = ESMProtein(sequence=peptide)
-#     protein_tensor = client.encode(protein) # replaces AA with int? and adds start and end term 
-#     logits_output = client.logits(
-#     protein_tensor, LogitsConfig(sequence=True, return_embeddings=True)
-#     )
-#     embedding = logits_output.embeddings.squeeze(0).unsqueeze(-1)
-#     embedding = embedding.numpy() # convert to numpy array
-#     return embedding  # [len(peptide)+2, 960, 1]
 
 
 # process 9- and 10-mers before esm encoding

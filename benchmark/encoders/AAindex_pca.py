@@ -14,8 +14,8 @@ from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_invento
 DEFAULT_INPUT_PATH="data/AAindex1"
 DEFAULT_OUTPUT_PATH="data/"
 
-def AAindex_encoder(peptide, AAindex_pca):
 
+def AAindex_encoder(peptide, AAindex_pca):
     amino = 'ARNDCQEGHILKMFPSTWYV-'
     matrix = np.transpose(AAindex_pca)   # [12,21]
     dim = np.asarray(AAindex_pca).shape[-1]
@@ -42,7 +42,6 @@ def peptide_data_AAindex(peptide, AAindex_pca):
 def hla_data_AAindex(hla_dic,hla_type,dic_inventory,AAindex_pca):
     try:
         seq = hla_dic[hla_type]
-        # print("HLA seq:", seq, "length", len(seq))
     except KeyError:
         hla_type = rescue_unknown_hla(hla_type,dic_inventory)
         seq = hla_dic[hla_type]
@@ -51,7 +50,6 @@ def hla_data_AAindex(hla_dic,hla_type,dic_inventory,AAindex_pca):
 
 
 def construct_AAindex_pca(ori, hla_dic,dic_inventory,AAindex_pca):
-    
     series = []
     for i in range(ori.shape[0]):
         peptide = ori['peptide'].iloc[i]
@@ -119,7 +117,6 @@ def AAindex_pca_matrix(input_path=DEFAULT_INPUT_PATH, output_path=DEFAULT_OUTPUT
     np.savetxt("encoders/AAindex_pca_v2.txt", AAindex_pca)
 
     return None
-# AAindex_pca = np.loadtxt("my_after_pca.txt")
 
 
 def AAindex_encode_dataset(pca, dataset = 'iedb_data.csv'):
@@ -151,7 +148,6 @@ def AAindex_encode_dataset(pca, dataset = 'iedb_data.csv'):
 
     print("start " + encoding[i] + " encoding")
     dataset = construct_AAindex_pca(ori, hla_dic, dic_inventory, encoder)
-    # print(np.asarray(dataset[0][0][0]).shape[-1])
     input1 = pull_peptide_aaindex(dataset)
     input2 = pull_hla_aaindex(dataset)
     label = pull_label(dataset)
@@ -194,7 +190,6 @@ def main():
     for i, encoder in enumerate([AAindex_pca, AAindex]):
         print("start " + encoding[i] + " encoding")
         dataset = construct_AAindex_pca(ori, hla_dic, dic_inventory, encoder)
-        # print(np.asarray(dataset[0][0][0]).shape[-1])
         input1 = pull_peptide_aaindex(dataset)
         input2 = pull_hla_aaindex(dataset)
         label = pull_label(dataset)

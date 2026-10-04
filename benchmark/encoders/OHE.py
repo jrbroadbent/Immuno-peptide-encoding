@@ -11,20 +11,18 @@ from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_invento
 
 def one_hot_encoder(peptide):
     amino = 'ARNDCQEGHILKMFPSTWYV-'
-    encoded = np.zeros((len(peptide), len(amino)))  # (seq_len, 21) --> does it matter that its this way round?
+    encoded = np.zeros((len(peptide), len(amino)))  # (seq_len, 21)
     for i in range(len(peptide)):
         query = peptide[i]
         if query == 'X': query = '-'
         query = query.upper()
-        # encoded[i, amino.index(query)] = 1 
     encoded = encoded.reshape(1,len(peptide),len(amino))
     return encoded
 
 
-# from dataset entries to ohe 
+# process 9- and 10-mers before encoding
 def peptide_data_ohe(peptide):   # return numpy array [10,12,1]
     length = len(peptide)
-    # process 9- and 10-mers before encoding
     if length == 10:
         encode = one_hot_encoder(peptide)
     elif length == 9:
@@ -36,9 +34,8 @@ def peptide_data_ohe(peptide):   # return numpy array [10,12,1]
 def hla_data_ohe(hla_dic, hla_type, dic_inventory):    # return numpy array [36,960,1]
     try:
         seq = hla_dic[hla_type]
-        # print("HLA seq:", seq, "length", len(seq))
     except KeyError:
-        hla_type = rescue_unknown_hla(hla_type,dic_inventory)   ## dic_inventory = dict_inventory(...)?
+        hla_type = rescue_unknown_hla(hla_type,dic_inventory)
         seq = hla_dic[hla_type]
     encode = one_hot_encoder(seq)
     return encode 
