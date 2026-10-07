@@ -1,22 +1,25 @@
 # Controlled Comparison of Encoding Schemes for Peptide-HLA Based CD8+ T Cell Immunogenicity Prediction
 
 ## About The Project
-<img width="414" height="792" alt="schematic of CD8+ T cell activation" src="https://github.com/user-attachments/assets/5f773fc8-fcca-4f6b-afd1-86b32af6aa6b" />
+<table>
+  <tr>
+    <td width="60%" valign="top">
+      <p>Immunogenicity prediction is the prediction of whether a peptide is capable of triggering the activation of immune system cells (see right schematic). This project focuses on a specific type of immune system cell, CD8+ T cells, which bind antigen-HLA class I complexes on the surface of nucleated cells in humans. Predicting immunogenicity in this context has applications in vaccine design and CAR T-cell cancer therapy.</p>
+
+<p>The peptide amino acid sequence must be converted into a numeric format to be used as input for machine learning models, a process called encoding. This project aims to compare encoding schemes from popular paradigms in a controlled manner to identify their relative performance benefits. This addresses the lack of research on which encoding schemes maximise predictive performance.</p>
 
 <br>
-<br>
+    
+<img width="100%" alt="Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals." src="https://github.com/user-attachments/assets/e4b75b31-8851-481e-bbdf-3379fe8ddeef" />
+<b>Figure:</b> Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals.
+        
+  </td>
+  <td width="40%" valign="top">
+      <img width="100%" alt="schematic of CD8+ T cell activation" src="https://github.com/user-attachments/assets/5f773fc8-fcca-4f6b-afd1-86b32af6aa6b" align="right">
+    </td>
+  </tr>
+</table>
 
-Immunogenicity prediction is the prediction of whether a peptide is capable of triggering the activation of immune system cells. This project focuses on a specific type of immune system cell, CD8+ T cells, which bind antigen-HLA class I complexes on the surface of nucleated cells in humans. Predicting immunogenicity in this context has applications in vaccine design and CAR T-cell cancer therapy. 
-
-The peptide amino acid sequence must be converted into a numeric format to be used as input for machine learning models, a process called encoding. This project aims to compare encoding schemes from popular paradigms in a controlled manner to identify their relative performance benefits. This addresses the lack of research on which encoding schemes maximise predictive performance.
-
-<br>
-
-<img width="763" height="396" alt="Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals." src="https://github.com/user-attachments/assets/e4b75b31-8851-481e-bbdf-3379fe8ddeef" />
-
-__Figure:__ Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals.
-
-<br>
 <br>
 
 ## Repository Status
