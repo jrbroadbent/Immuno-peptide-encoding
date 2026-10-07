@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import pandas as pd
 from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from pathlib import Path
 
 
 def one_hot_encoder(peptide):
@@ -72,7 +73,8 @@ def pull_hla_ohe(dataset):
 
 
 def ohe_encode_dataset(dataset = 'iedb_data.csv'):
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
     ori = pd.read_csv("data/" + dataset)
 
     if dataset == "sars_cov_2_test.csv":
@@ -107,7 +109,8 @@ def ohe_encode_dataset(dataset = 'iedb_data.csv'):
 def main():
     print("start of program")
 
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
     ori = pd.read_csv('./data/iedb_data.csv')
     
     frac = 1 # choose dataset size --> 1 = whole dataset

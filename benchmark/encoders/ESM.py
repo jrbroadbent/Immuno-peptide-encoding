@@ -11,6 +11,7 @@ from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_invento
 from transformers import AutoTokenizer, EsmModel
 import torch
 import os
+from pathlib import Path
 
 
 
@@ -79,7 +80,8 @@ def pull_hla_esm(dataset):
 
 
 def esm_encode_dataset(dataset = 'iedb_data.csv'):
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
 
     ori = pd.read_csv("data/" + dataset)
 
@@ -120,7 +122,9 @@ def esm_encode_dataset(dataset = 'iedb_data.csv'):
 def main():
     print("start of program")
 
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
+
     encoded_dataset = esm_encode_dataset(dataset = 'iedb_data.csv')
 
     print("saving to file")

@@ -10,6 +10,7 @@ import pandas as pd
 import os
 import glob
 from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from pathlib import Path
 
 DEFAULT_INPUT_PATH="data/AAindex1"
 DEFAULT_OUTPUT_PATH="data/"
@@ -120,7 +121,8 @@ def AAindex_pca_matrix(input_path=DEFAULT_INPUT_PATH, output_path=DEFAULT_OUTPUT
 
 
 def AAindex_encode_dataset(pca, dataset = 'iedb_data.csv'):
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
 
     ori = pd.read_csv("data/" + dataset)
 
@@ -167,7 +169,8 @@ def main():
     print("start of program")
     PRODUCE_MATRICES = False
 
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
 
     # Produce AAindex encoding matrices (with and without pca)
     if PRODUCE_MATRICES:
