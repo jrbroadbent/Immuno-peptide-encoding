@@ -51,8 +51,8 @@ exit   # stop the container when done
 ## Usage 
 1. Clone the repository locally:
 ```bash
-git clone https://github.com/jrbroadbent/Project.git Project/
-cd Project/
+git clone https://github.com/jrbroadbent/Project.git Immuno-peptide-encoding/
+cd Immuno-peptide-encoding/
 ```
 
 2. Encoded datasets can be generated with:
