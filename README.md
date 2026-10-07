@@ -1,10 +1,25 @@
 # Controlled Comparison of Encoding Schemes for Peptide-HLA Based CD8+ T Cell Immunogenicity Prediction
 
 ## About The Project
-Immunogenicity prediction is the prediction of whether a peptide is capable of triggering the activation of immune system cells. This project focuses on a specific type of immune system cell, CD8+ T cells, which bind antigen-HLA class I complexes on the surface of nucleated cells in humans. Predicting immunogenicity in this context has applications in vaccine design and CAR T-cell cancer therapy. 
+<table>
+  <tr>
+    <td width="60%" valign="top">
+      <p>Immunogenicity prediction is the prediction of whether a peptide is capable of triggering the activation of immune system cells (see right schematic). This project focuses on a specific type of immune system cell, CD8+ T cells, which bind antigen-HLA class I complexes on the surface of nucleated cells in humans. Predicting immunogenicity in this context has applications in vaccine design and CAR T-cell cancer therapy.</p>
 
-The peptide amino acid sequence must be converted into a numeric format to be used as input for machine learning models, a process called encoding. This project aims to compare encoding schemes from popular paradigms in a controlled manner to identify their relative performance benefits. This addresses the lack of research on which encoding schemes maximise predictive performance.
+<p>The peptide amino acid sequence must be converted into a numeric format to be used as input for machine learning models, a process called encoding. This project aims to compare encoding schemes from popular paradigms in a controlled manner to identify their relative performance benefits. This addresses the lack of research on which encoding schemes maximise predictive performance.</p>
+
 <br>
+    
+<img width="100%" alt="Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals." src="https://github.com/user-attachments/assets/e4b75b31-8851-481e-bbdf-3379fe8ddeef" />
+<b>Figure:</b> Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals.
+        
+  </td>
+  <td width="40%" valign="top">
+      <img width="100%" alt="schematic of CD8+ T cell activation" src="https://github.com/user-attachments/assets/5f773fc8-fcca-4f6b-afd1-86b32af6aa6b" align="right">
+    </td>
+  </tr>
+</table>
+
 <br>
 
 ## Repository Status
@@ -20,17 +35,34 @@ source myenv/bin/activate
 pip install -r requirements.txt
 ```
 
+Alternatively, using docker: 
+```bash 
+docker pull jrboadbent/immuno-image   # pull image from docker hub
+docker container run -it jrbroadbent/immuno-image /bin/bash   # run container with bash shell
+```
+```bash
+exit   # stop the container when done
+```
+
 > **Note:** Structure-based encoding schemes (located in `encoders/myImmunoStruct` and `encoders/gnn.py`) are currently incomplete and may require alternative environment configurations
 
 <br>
 
 ## Usage 
-1. Encoded datasets can be generated with:
+1. Clone the repository locally:
 ```bash
-python -m benchmark.encoders.<ESM | AAindex_pca | OHE>
+git clone https://github.com/jrbroadbent/Project.git Project/
+cd Project/
 ```
 
-2. The controlled comparison can be run with `Project/` as the working directory with:
+2. Encoded datasets can be generated with:
+```bash
+python -m benchmark.encoders.OHE
+python -m benchmark.encoders.AAindex_pca
+python -m benchmark.encoders.ESM
+```
+
+3. The controlled comparison can be run with:
 ```bash
 python -m benchmark.main [options]
 ```
@@ -59,4 +91,14 @@ options:
   -B B                  number of bootstrap iterations
   -n N                  fraction of dataset to resample in bootstrap
                         resampling
+```
+
+<br>
+
+## Tests
+tests can be run with pytest using:
+```bash 
+pip install pytest
+pytest benchmark/tests/test_main.py
+pytest benchmark/tests/test_model_defs.py
 ```
