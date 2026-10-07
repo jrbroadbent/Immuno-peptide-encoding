@@ -4,6 +4,10 @@
 Immunogenicity prediction is the prediction of whether a peptide is capable of triggering the activation of immune system cells. This project focuses on a specific type of immune system cell, CD8+ T cells, which bind antigen-HLA class I complexes on the surface of nucleated cells in humans. Predicting immunogenicity in this context has applications in vaccine design and CAR T-cell cancer therapy. 
 
 The peptide amino acid sequence must be converted into a numeric format to be used as input for machine learning models, a process called encoding. This project aims to compare encoding schemes from popular paradigms in a controlled manner to identify their relative performance benefits. This addresses the lack of research on which encoding schemes maximise predictive performance.
+
+<img width="1272" height="660" alt="image" src="https://github.com/user-attachments/assets/e4b75b31-8851-481e-bbdf-3379fe8ddeef" />
+*Figure:* Mean Bootstrap BCE losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals.
+
 <br>
 <br>
 
