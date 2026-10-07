@@ -19,12 +19,12 @@ import pickle
 import copy
 import datetime
 import argparse
+from pathlib import Path
 
 from benchmark.encoders.AAindex_pca import * 
 from benchmark.encoders.ESM import * 
 from benchmark.encoders.OHE import *
 
-# from encoders.ESM import *
 from benchmark.models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, AAindex_pca_seperateCNN, ESM_seperateCNN
 from transformers import AutoTokenizer, EsmModel
 
@@ -32,7 +32,7 @@ from transformers import AutoTokenizer, EsmModel
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 
 
-def objective(trial, model_fn, train_data): # could just pass it my train data 
+def objective(trial, model_fn, train_data):
     learning_rate = trial.suggest_float('lr', 1e-4, 1e-1, log=True)
     batch_size = trial.suggest_int('batch_size', 32, 256)
     dropout = trial.suggest_float('p', 0.1, 0.5)
@@ -52,7 +52,6 @@ def objective(trial, model_fn, train_data): # could just pass it my train data
 
         # train
         model.train()
-        # best_loss = float('inf')
         early_stopping = EarlyStopping(patience=patience, delta=0, verbose=True)
         for epoch in range(200): # number of epochs
             for batch_idx, (data, target) in enumerate(train_loader):
@@ -84,7 +83,6 @@ def objective(trial, model_fn, train_data): # could just pass it my train data
     return val_loss
 
 
-# split up into train_loop and boostrap?
 def bootstrap(
         train_dataset,
         test_dataset: torch.utils.data.Dataset,   # test set
@@ -93,9 +91,9 @@ def bootstrap(
         loss_fn,
         optimizer,
         epochs,
-        n: int,         # size of sample
+        n: int,
         B: int,
-        test_only = False                 # number of samples
+        test_only = False
         ):
     
 
@@ -106,16 +104,10 @@ def bootstrap(
         
         train_dataloader = DataLoader(train_dataset, batch_size=params["batch_size"])
         
-        # best_loss = None
         early_stopping = EarlyStopping(patience=params["patience"], delta=0, verbose=True)
-        # best_weights = None
         for epoch in range(epochs):
             # print(f"Epoch {epoch+1}\n-------------------------------")
             loss = train(train_dataloader, model, loss_fn, optimizer, verbose=False, output=True)
-            # if loss < best_loss:
-            #     best_loss = loss
-            #     # best_weights = copy.deepcopy(model.state_dict())
-
             # Check early stopping condition
             early_stopping.check_early_stop(loss)
             if early_stopping.stop_training:
@@ -151,12 +143,8 @@ def bootstrap(
 def train(dataloader, model, loss_fn, optimizer, verbose=False, output=False):
     size = len(dataloader.dataset)
     model.train()
-    # print("num samples:", len(dataloader.dataset))  # ~7000
-    # print("num batches", len(dataloader))  # ~50 (batch_size=128)
+    
     for batch, (X, y) in enumerate(dataloader):
-        # X, y = X.to(device), y.to(device)
-
-
         # Compute prediction error
         pred = model(X)
         loss = loss_fn(pred, y)
@@ -168,7 +156,6 @@ def train(dataloader, model, loss_fn, optimizer, verbose=False, output=False):
 
         if batch % 10 == 0:
             loss, current = loss.item(), (batch + 1) * len(X[0])
-            # print(X[0].size())  # [128,1,12,320]
             if verbose:
                 print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
     
@@ -183,12 +170,9 @@ def test(dataloader, model, loss_fn, verbose=False, output=False):
     test_loss, correct = 0, 0
     with torch.no_grad():
         for X, y in dataloader:
-            # X, y = X.to(device), y.to(device)
             pred = model(X)
-            # print("pred and y:", pred, y)
             test_loss += loss_fn(pred, y).item()
             correct += (torch.round(pred) == y).type(torch.float).sum().item()
-            # correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
     correct /= size
 
@@ -258,7 +242,8 @@ def retain_910(ori):
 
 def main(args):
     print("\nstart of program\n")
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[0]
+    os.chdir(PROJECT_ROOT)
 
     # Load Data 
     ESM_dataset = torch.load('data/ESM_encoded_samples.pt')
@@ -319,8 +304,6 @@ def main(args):
         for k, test_set in enumerate(test_sets):
             print(f"\n-------------------------------\n {model_names[i]} Model : TEST set benchmarking \n-------------------------------")
 
-            # fraction of test set
-            
             # encode test set
             encoders = [esm_encode_dataset, 
                         AAindex_encode_dataset, 
@@ -335,8 +318,6 @@ def main(args):
             else: 
                 encoded_test_set = encoder(dataset=test_set)
             encoded_test_set = ImmunoDataset(encoded_test_set)
-            # print("CHECK y:", y)
-
 
             # bootstrap validate on test set
             for j in range(1): # no repeats for test sets 
@@ -361,11 +342,8 @@ def main(args):
     with open("data/"+args.testf, "wb") as f:  # "bootstrap_tain_avg.pkl"
         pickle.dump(test_results, f)
 
-
     return 0
-
-
-        
+ 
 
 
 if __name__ == '__main__':
@@ -385,12 +363,3 @@ if __name__ == '__main__':
     parser.add_argument("-n", type=float, default=1.0, help="fraction of dataset to resample in bootstrap resampling")
     args = parser.parse_args()
     main(args)
-
-# add ability to use own dataset
-# don't use optim flag 
-# ensure that the two hyperparam file options cannot be used simultaneously 
-
-# run with: 
-# python -m benchmark.main [options]
-
-# add options to avoid hardcoded local paths 

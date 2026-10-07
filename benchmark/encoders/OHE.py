@@ -7,24 +7,23 @@ import torch
 import numpy as np
 import pandas as pd
 from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
+from pathlib import Path
 
 
 def one_hot_encoder(peptide):
     amino = 'ARNDCQEGHILKMFPSTWYV-'
-    encoded = np.zeros((len(peptide), len(amino)))  # (seq_len, 21) --> does it matter that its this way round?
+    encoded = np.zeros((len(peptide), len(amino)))  # (seq_len, 21)
     for i in range(len(peptide)):
         query = peptide[i]
         if query == 'X': query = '-'
         query = query.upper()
-        # encoded[i, amino.index(query)] = 1 
     encoded = encoded.reshape(1,len(peptide),len(amino))
     return encoded
 
 
-# from dataset entries to ohe 
+# process 9- and 10-mers before encoding
 def peptide_data_ohe(peptide):   # return numpy array [10,12,1]
     length = len(peptide)
-    # process 9- and 10-mers before encoding
     if length == 10:
         encode = one_hot_encoder(peptide)
     elif length == 9:
@@ -36,9 +35,8 @@ def peptide_data_ohe(peptide):   # return numpy array [10,12,1]
 def hla_data_ohe(hla_dic, hla_type, dic_inventory):    # return numpy array [36,960,1]
     try:
         seq = hla_dic[hla_type]
-        # print("HLA seq:", seq, "length", len(seq))
     except KeyError:
-        hla_type = rescue_unknown_hla(hla_type,dic_inventory)   ## dic_inventory = dict_inventory(...)?
+        hla_type = rescue_unknown_hla(hla_type,dic_inventory)
         seq = hla_dic[hla_type]
     encode = one_hot_encoder(seq)
     return encode 
@@ -75,7 +73,8 @@ def pull_hla_ohe(dataset):
 
 
 def ohe_encode_dataset(dataset = 'iedb_data.csv'):
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
     ori = pd.read_csv("data/" + dataset)
 
     if dataset == "sars_cov_2_test.csv":
@@ -110,7 +109,8 @@ def ohe_encode_dataset(dataset = 'iedb_data.csv'):
 def main():
     print("start of program")
 
-    os.chdir('/home/josh/Dev/Project/benchmark/')
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    os.chdir(PROJECT_ROOT)
     ori = pd.read_csv('./data/iedb_data.csv')
     
     frac = 1 # choose dataset size --> 1 = whole dataset
@@ -121,7 +121,7 @@ def main():
     inventory = list(hla_dic.keys())
     dic_inventory = dict_inventory(inventory)
 
-    print("start encoding")
+    print("start OHE encoding")
     dataset = construct_ohe(ori, hla_dic, dic_inventory)
     input1 = pull_peptide_ohe(dataset)
     input2 = pull_hla_ohe(dataset)
@@ -134,7 +134,7 @@ def main():
     y = torch.from_numpy(label).to(torch.float32)
 
     print("saving to file")
-    torch.save({"x1": x1, "x2": x2, "y": y}, "encoders/OHE_encoded_samples.pt")
+    torch.save({"x1": x1, "x2": x2, "y": y}, "data/OHE_encoded_samples.pt")
     print("finished")
 
     return None
