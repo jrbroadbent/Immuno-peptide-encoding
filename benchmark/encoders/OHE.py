@@ -121,7 +121,7 @@ def main():
     inventory = list(hla_dic.keys())
     dic_inventory = dict_inventory(inventory)
 
-    print("start encoding")
+    print("start OHE encoding")
     dataset = construct_ohe(ori, hla_dic, dic_inventory)
     input1 = pull_peptide_ohe(dataset)
     input2 = pull_hla_ohe(dataset)
@@ -134,7 +134,7 @@ def main():
     y = torch.from_numpy(label).to(torch.float32)
 
     print("saving to file")
-    torch.save({"x1": x1, "x2": x2, "y": y}, "encoders/OHE_encoded_samples.pt")
+    torch.save({"x1": x1, "x2": x2, "y": y}, "data/OHE_encoded_samples.pt")
     print("finished")
 
     return None

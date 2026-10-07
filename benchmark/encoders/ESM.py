@@ -103,7 +103,7 @@ def esm_encode_dataset(dataset = 'iedb_data.csv'):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     print("finished loading ESM model")
 
-    print("start encoding")
+    print("start ESM encoding")
     dataset = construct_esm_embedding(ori, hla_dic, dic_inventory, client, tokenizer)
     input1 = pull_peptide_esm(dataset)
     input2 = pull_hla_esm(dataset)

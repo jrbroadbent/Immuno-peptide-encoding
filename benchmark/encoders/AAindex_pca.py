@@ -204,7 +204,7 @@ def main():
         y = torch.from_numpy(label).to(torch.float32)
 
         print("saving to file")
-        torch.save({"x1": x1, "x2": x2, "y": y}, "encoders/" + encoding[i] + "_encoded_samples.pt")
+        torch.save({"x1": x1, "x2": x2, "y": y}, "data/" + encoding[i] + "_encoded_samples.pt")
         print("finished")
 
     return None
