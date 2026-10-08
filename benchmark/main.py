@@ -25,7 +25,7 @@ from benchmark.encoders.AAindex_pca import *
 from benchmark.encoders.ESM import * 
 from benchmark.encoders.OHE import *
 
-from benchmark.models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, AAindex_pca_seperateCNN, ESM_seperateCNN
+from benchmark.models.model_defs import OHE_separateCNN, AAindex_separateCNN, AAindex_pca_separateCNN, ESM_separateCNN
 from transformers import AutoTokenizer, EsmModel
 
 
@@ -253,7 +253,7 @@ def main(args):
     datasets = [ESM_dataset, AAindex_pca_dataset, AAindex_dataset, OHE_dataset]
 
     # Model
-    models = [ESM_seperateCNN, AAindex_pca_seperateCNN, AAindex_seperateCNN, OHE_seperateCNN]
+    models = [ESM_separateCNN, AAindex_pca_separateCNN, AAindex_separateCNN, OHE_separateCNN]
     model_names = ["ESM", "AAindex_pca", "AAindex", "OHE"]
 
     results = {}

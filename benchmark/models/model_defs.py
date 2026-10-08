@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 # PyTorch implementation
-class ESM_seperateCNN(nn.Module):
+class ESM_separateCNN(nn.Module):
     def __init__(self, dropout = 0.2):
         super().__init__()
         self.cnn1 = nn.Sequential(
@@ -46,7 +46,7 @@ class ESM_seperateCNN(nn.Module):
         return logits 
 
 
-class AAindex_seperateCNN(nn.Module):
+class AAindex_separateCNN(nn.Module):
     def __init__(self, dropout = 0.2):
         super().__init__()
         self.cnn1 = nn.Sequential(
@@ -88,7 +88,7 @@ class AAindex_seperateCNN(nn.Module):
         return logits 
 
 
-class AAindex_pca_seperateCNN(nn.Module):
+class AAindex_pca_separateCNN(nn.Module):
     def __init__(self, dropout = 0.2):
         super().__init__()
         self.cnn1 = nn.Sequential(
@@ -130,7 +130,7 @@ class AAindex_pca_seperateCNN(nn.Module):
         return logits 
     
 
-class OHE_seperateCNN(nn.Module):
+class OHE_separateCNN(nn.Module):
     def __init__(self, dropout = 0.2):
         super().__init__()
         self.cnn1 = nn.Sequential(
