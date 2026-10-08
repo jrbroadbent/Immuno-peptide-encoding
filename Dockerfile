@@ -1,5 +1,6 @@
 FROM python:3.12-bookworm 
-COPY ./requirements.txt .
 RUN apt-get update \
-&& apt-get install python3-pip -y 
+&& apt-get install git -y 
+RUN git clone https://github.com/jrbroadbent/Immuno-peptide-encoding.git
+WORKDIR /Immuno-peptide-encoding
 RUN pip install -r requirements.txt
