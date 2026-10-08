@@ -19,7 +19,7 @@ from encoders.ESM import *
 from encoders.OHE import *
 
 # from encoders.ESM import *
-from models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, AAindex_pca_seperateCNN, ESM_seperateCNN
+from models.model_defs import OHE_separateCNN, AAindex_separateCNN, AAindex_pca_separateCNN, ESM_separateCNN
 # from transformers import AutoTokenizer, EsmModel
 
 
@@ -70,7 +70,7 @@ for dataset in [ESM_dataset, AAindex_dataset, AAindex_pca_dataset, OHE_dataset]:
 
 
 
-models = [ESM_seperateCNN, AAindex_pca_seperateCNN, AAindex_seperateCNN, OHE_seperateCNN]
+models = [ESM_separateCNN, AAindex_pca_separateCNN, AAindex_separateCNN, OHE_separateCNN]
 model_names = ["ESM", "AAindex_pca", "AAindex", "OHE"]
 
 # loop through models

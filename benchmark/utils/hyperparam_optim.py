@@ -4,7 +4,7 @@ import torch.nn as nn
 from sklearn.model_selection import KFold
 import optuna
 from torch.utils.data import Dataset, DataLoader, random_split, Subset
-from models.model_defs import OHE_seperateCNN, AAindex_seperateCNN, ESM_seperateCNN
+from models.model_defs import OHE_separateCNN, AAindex_separateCNN, ESM_separateCNN
 
 
 # __all__ = [
@@ -113,7 +113,7 @@ def main():
     datasets = [ESM_dataset, AAindex_dataset, OHE_dataset]
 
     # Models 
-    model_fns = [ESM_seperateCNN, AAindex_seperateCNN, OHE_seperateCNN]
+    model_fns = [ESM_separateCNN, AAindex_separateCNN, OHE_separateCNN]
     model_names = ["ESM", "AAindex", "OHE"]
 
     for model_name, model_fn, dataset in zip(model_names, model_fns, datasets):
