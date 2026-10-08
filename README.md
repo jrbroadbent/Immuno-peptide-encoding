@@ -4,18 +4,19 @@
 <table>
   <tr>
     <td width="60%" valign="top">
-      <p>Immunogenicity prediction is the prediction of whether a peptide is capable of triggering the activation of immune system cells (see right schematic). This project focuses on a specific type of immune system cell, CD8+ T cells, which bind antigen-HLA class I complexes on the surface of nucleated cells in humans. Predicting immunogenicity in this context has applications in vaccine design and CAR T-cell cancer therapy.</p>
-
-<p>The peptide amino acid sequence must be converted into a numeric format to be used as input for machine learning models, a process called encoding. This project aims to compare encoding schemes from popular paradigms in a controlled manner to identify their relative performance benefits. This addresses the lack of research on which encoding schemes maximise predictive performance.</p>
+      <p>The identification of immunogenic peptides is crucial for the development of vaccines and cancer immunotherapies. Peptides are said to be immunogenic if they can activate immune system cells, such as T cells (see right schematic). However, traditional screening for peptides that activate CD8+ T cells is a time-consuming and labour-intensive process. Machine learning methods are a promising complement to reduce the experimental burden and are increasingly being adopted into immunogenicity screening workflows. A critical component of machine learning models for immunogenicity prediction is the choice of encoding scheme. This determines how peptide sequences are represented and therefore what information about the peptides is available to the model which ultimately shapes model performance. However, current immunogenicity predictors deploy a range of encoding schemes, and it is unclear which one best captures the important features of immunogenic peptides to improve predictive capacity.</p>
+      <p>This study addresses the lack of guidance on encoding schemes by conducting a controlled comparison of encoding schemes from key paradigms, isolating their contribution to performance to help inform the choice of encoding scheme for immunogenicity predictors. This study found that physiochemical property based encoding schemes (AAindex and AAindex+PCA) were capable of outperforming a more
+advanced learned representation approach (ESM), and one-hot encoding (OHE) resulted in substantial performance variability but displayed surprising generalisation potential. See the figure below for encoding scheme performance when tested on three diverse datasets.</p>
 
 <br>
     
 <img width="100%" alt="Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals." src="https://github.com/user-attachments/assets/e4b75b31-8851-481e-bbdf-3379fe8ddeef" />
-<b>Figure:</b> Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for A) SARS-CoV-2, B) Dengue virus, and C) Neoantigen test datasets. Bars indicate 95% confidence intervals.
+<b>Figure:</b> Mean Bootstrap binary cross-entropy (BCE) losses for ESM, AAindex + PCA, AAindex, and OHE models for <b>A)</b> SARS-CoV-2, <b>B)</b> Dengue virus, and <b>C)</b> Neoantigen test datasets. Bars indicate 95% confidence intervals.
         
   </td>
   <td width="40%" valign="top">
-      <img width="100%" alt="schematic of CD8+ T cell activation" src="https://github.com/user-attachments/assets/5f773fc8-fcca-4f6b-afd1-86b32af6aa6b" align="right">
+      <img width="100%" alt="schematic of CD8+ T cell activation" src="https://github.com/user-attachments/assets/5f773fc8-fcca-4f6b-afd1-86b32af6aa6b" align="right"\>
+      <b>Figure:</b> CD8+ T cell activation. 
     </td>
   </tr>
 </table>
@@ -51,7 +52,7 @@ exit   # stop the container when done
 ## Usage 
 1. Clone the repository locally:
 ```bash
-git clone https://github.com/jrbroadbent/Project.git Immuno-peptide-encoding/
+git clone https://github.com/jrbroadbent/Immuno-peptide-encoding.git
 cd Immuno-peptide-encoding/
 ```
 
