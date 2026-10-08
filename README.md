@@ -23,11 +23,6 @@ advanced learned representation approach (ESM), and one-hot encoding (OHE) resul
 
 <br>
 
-## Repository Status
-> **Disclaimer:** This repository contains experimental research code. The codebase has not yet been refactored for production.
-
-<br>
-
 ## Requirements
 A Python virtual environment can be set up with the following commands:
 ```bash
