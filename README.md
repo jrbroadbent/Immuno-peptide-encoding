@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
 Alternatively, using docker: 
 ```bash 
-docker pull jrboadbent/immuno-image   # pull image from docker hub
+docker pull jrbroadbent/immuno-image   # pull image from docker hub
 docker container run -it jrbroadbent/immuno-image /bin/bash   # run container with bash shell
 ```
 ```bash
