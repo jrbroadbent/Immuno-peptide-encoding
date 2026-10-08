@@ -7,19 +7,8 @@ import pytest
 import torch
 from benchmark.models.model_defs import ESM_separateCNN, AAindex_separateCNN, AAindex_pca_separateCNN, OHE_separateCNN
 
-# testing the data flow before the model is most important 
-
-# check model dimensions 
-# input dimensions 
-# internal dimensions 
-# output dimensions 
-
-# check compatibility with dataloaders 
-
-
 class Test_ESM_separateCNN:
-
-    # pytest specifically looks for method `setup_class` in the test class 
+ 
     def setup_method(self):
         self.model = ESM_separateCNN()
         self.x1 = torch.rand(size=(1,1,12,320))
