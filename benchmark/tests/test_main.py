@@ -24,11 +24,3 @@ class Test_main:
 
     def test_main_executes(self):
         assert main(args()) == 0
-
-    # def test_main_
-
-# also test: 
-# sanity check output values?  
-
-# run with: 
-# pytest benchmark/tests/test_main.py
