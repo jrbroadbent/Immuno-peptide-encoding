@@ -33,14 +33,11 @@ pip install -r requirements.txt
 
 Alternatively, using docker: 
 ```bash 
-docker pull jrbroadbent/immuno-image   # pull image from docker hub
-docker container run -it jrbroadbent/immuno-image /bin/bash   # run container with bash shell
+docker build -t immuno-image .
+docker container run -it immuno-image /bin/bash
 ```
-```bash
-exit   # stop the container when done
-```
-
-> **Note:** Structure-based encoding schemes (located in `benchmark/encoders/adapted_ImmunoStruct` and `benchmark/encoders/gnn.py`) are currently incomplete and may require alternative environment configurations
+This runs the container with a bash shell.
+Use `exit` to stop the container when done.
 
 <br>
 
