@@ -25,7 +25,7 @@ advanced learned representation approach (ESM protein language model), and one-h
 <br>
 
 ## Requirements
-This project uses `Python 3.12`
+This project uses `Python 3.12`. <br>
 A Python virtual environment can be set up with the following commands:
 ```bash
 python3 -m venv myenv
