@@ -4,8 +4,6 @@ Encoder using ESM peptide seqeunce embeddings
 
 import numpy as np
 import pandas as pd
-from esm.models.esmc import ESMC
-from esm.sdk.api import ESMProtein, LogitsConfig
 from benchmark.encoders.util import rescue_unknown_hla, pull_label, dict_inventory, hla_df_to_dic
 
 from transformers import AutoTokenizer, EsmModel
