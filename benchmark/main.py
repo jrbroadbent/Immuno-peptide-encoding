@@ -38,15 +38,17 @@ def objective(trial, model_fn, train_data):
     dropout = trial.suggest_float('p', 0.1, 0.5)
     patience = trial.suggest_int('patience', 0, 20)
 
-    model = model_fn(dropout=dropout)    
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.BCELoss()
     
     # produce splits 
     kf = KFold(n_splits=5)
 
     # cross validation 
+    fold_losses = []
     for train_set, val_set in kf.split(train_data):
+        model = model_fn(dropout=dropout)    
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        
         data = Subset(train_data, train_set)
         train_loader = DataLoader(data, batch_size=batch_size, shuffle=True)
 
@@ -78,9 +80,10 @@ def objective(trial, model_fn, train_data):
                 output = model(data)
                 val_loss += criterion(output, target).item()
             val_loss /= num_batches
+            fold_losses.append(val_loss)
         
     # return mean validation loss
-    return val_loss
+    return np.mean(fold_losses)
 
 
 def bootstrap(
