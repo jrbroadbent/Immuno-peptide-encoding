@@ -10,6 +10,7 @@ import sys
 import time
 import requests
 import pandas as pd
+import numpy as np
 from pathlib import Path
 import subprocess
 from sklearn.model_selection import StratifiedGroupKFold
@@ -123,6 +124,50 @@ def query_uniprot(uniprot_ids, poll_interval=2):
     return sequences
 
 
+#### working on quicker algorithm ####
+def remove_repeats(df, colname1="linear_sequence", colname2="mhc_restriction", targetcol="Immunogenicity"): 
+    seq = set(df[colname1])
+    hla = set(df[colname2])
+
+    unique_pairs = set()
+    for s in seq:
+        for h in hla:
+            unique_pairs.add((s,h))
+    print(unique_pairs)
+
+    for (seq, hla) in unique_pairs:
+        mask = ((df[colname1] == seq) & (df[colname2] == hla))
+        hits = df[mask]
+        col1 = hits[targetcol]
+        if (len(hits) > 1):
+            # get values for other columns for each index 
+            values = col1.unique()
+            n = len(values)
+            total = len(col1)
+
+            # count number of each value 
+            counts = []
+            for v in values: 
+                counts.append(list(col1).count(v))
+
+            labels = np.argwhere(np.array(mask)==True).flatten()
+            
+            # combine repeat pHLA pairs into single row:
+            if (max(counts)/total <= 0.5):
+                df = df.drop(axis = "index", index=labels)
+            else:
+                idx = np.argwhere(np.array(counts) == max(counts)).flatten()
+                df = df.drop(axis = "index", index=labels[1:])
+                df.loc[df.index[labels[0]], targetcol]=  col1.iloc[idx].item()
+    
+
+        # when df is updated the rows are no longer numbered straight through from 0 to N
+        # so should re-index at end of each iteration 
+        df = df.set_index(pd.Index(range(df.shape[0])))
+
+    return df
+
+
 def get_parents():
     parents = {}
 
@@ -180,40 +225,17 @@ if __name__ == '__main__':
 
 
     #### Filter #### 
-    # how many entries with NA values have I got? significant proportion? what to do with them? 97 in mhc_allele_resolution
-    # remove repeats (same peptide-HLA pair)
     # drop entries with NAs in mhc_restriction or assay_description (shouldn't be any) 
-    # by linear sequence length (only 9 and 10)
-    # by mhc allele resolution? (only take 2 chain resolution?)
-    
-    print(f"size of dataset: {dataset.shape}\n{dataset.head()}\nMHC allele resolution column:\n{dataset["mhc_allele_resolution"]}")
-    print(f"number of NAs:\nmhc restriction: {dataset["mhc_restriction"].isna().sum()}\nmhc allele resolution: {dataset["mhc_allele_resolution"].isna().sum()}\nassay description: {dataset["assay_description"].isna().sum()}")
-    dataset = dataset[dataset["mhc_allele_resolution"].str.contains(r"(\b2\s+chain)", case=False, na=False)]
-
-    dataset = dataset[dataset["linear_sequence_length"].isin([9, 10])]
-
-    # check unique values of columns; e.g. mhc_allele_resolution col should only contain "2 chain"
-    print(f"mch allele resolution unique values: {dataset["mhc_allele_resolution"].unique()}")
-    print(f"sequence length unique values: {dataset["linear_sequence_length"].unique()}")
-    print(f"shape of dataset: {dataset.shape}") # --> lost half of the dataset from the filtering (~40%) - yikes!!
-
-
+    # filter by mhc allele resolution? (only take 2 chain resolution?)
+    # filter by linear sequence length (only 9 and 10)
     # process assay description column - if contains positive assign "Positive" if contains negative assign "Negative"
+    # remove repeats (same peptide-HLA pair)
+    
+    dataset = dataset[dataset["mhc_allele_resolution"].str.contains(r"(\b2\s+chain)", case=False, na=False)]
+    dataset = dataset[dataset["linear_sequence_length"].isin([9, 10])]
     dataset["immunogenicity"] = dataset["assay_description"].str.extract(r"([Pp]ositive|[Nn]egative)", expand=False)
-    print(dataset["immunogenicity"].unique()) # contains only Positive or Negative --> no NAs
-
-    # remove repeat peptide-HLA pairs
-    # is unique? --> no; parent iri and immunogenicity the same across repeats? --> no; is one more common? --> no; remove all instances 
-    pep_hla_pair = dataset.loc[["linear_sequence","mhc_restriction"]]
-    unique_pairs = set(pep_hla_pair)
-
-    for (peptide, hla) in pep_hla_pair:
-        if (peptide, hla) in unique_pairs:
-
-
+    dataset = remove_repeats(dataset)
     dataset = dataset.set_index(pd.Index(range(dataset.shape[0])))
-
-    print(dataset.head(),"\n", dataset.shape)
     
 
     # create set of parent protein uniprot iris
@@ -246,15 +268,12 @@ if __name__ == '__main__':
             extra_group += 1
             no_data_count += 1
 
-    print(f"percentage of entries with no parent protein info: {round(no_data_count/len(groups)*100, 1)}%")
-
     # inspect distribution of group sizes
     group_sizes = []
     for group in set(groups):
         size = groups.count(group)
         group_sizes.append(size)
     group_sizes.sort(reverse=True)
-    print(f"number of groups: {len(group_sizes)} = {len(set(groups))}, number of entries: {len(non_unique_iris)} = {len(dataset_iris)}")
 
     # plot histogram 
     plt.hist(group_sizes, bins=20, density=True, log=True)
@@ -263,8 +282,7 @@ if __name__ == '__main__':
     plt.savefig("GroupSizeDist.png")
 
 
-    # drop unnecessary columns 
-    # rename columns to match structure
+    # drop unnecessary columns and rename columns to match structure
     dataset["group_ids"] = groups
     dataset = dataset.drop(["linear_sequence_length",
                     "mhc_allele_resolution", 
@@ -277,6 +295,4 @@ if __name__ == '__main__':
                                       
     dataset.to_csv("2026_iedb_data.csv", header=True)
 
-    # create splits
-    # StratifiedGroupKFold()
 
