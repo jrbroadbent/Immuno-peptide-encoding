@@ -162,14 +162,8 @@ def process_parent_iri(dataset_iris):
 
 if __name__ == '__main__':
     # get dataset
-    # query_tcell_epitope()
+    query_tcell_epitope()
 
-    # filter 
-    # how many entries with NA values have I got? significant proportion? what to do with them? 97 in mhc_allele_resolution
-###    # remove repeats (same peptide-HLA pair)
-    # drop entries with NAs in mhc_restriction or assay_description (shouldn't be any) 
-    # by linear sequence length (only 9 and 10)
-    # by mhc allele resolution? (only take 2 chain resolution?)
     dataset = pd.read_csv(OUTPUT_PATH,
                           usecols = ["linear_sequence", 
                                       "linear_sequence_length",
@@ -183,6 +177,14 @@ if __name__ == '__main__':
                                     "mhc_allele_resolution": str, 
                                     "parent_source_antigen_iri": str, 
                                     "assay_description": str})
+
+
+    #### Filter #### 
+    # how many entries with NA values have I got? significant proportion? what to do with them? 97 in mhc_allele_resolution
+    # remove repeats (same peptide-HLA pair)
+    # drop entries with NAs in mhc_restriction or assay_description (shouldn't be any) 
+    # by linear sequence length (only 9 and 10)
+    # by mhc allele resolution? (only take 2 chain resolution?)
     
     print(f"size of dataset: {dataset.shape}\n{dataset.head()}\nMHC allele resolution column:\n{dataset["mhc_allele_resolution"]}")
     print(f"number of NAs:\nmhc restriction: {dataset["mhc_restriction"].isna().sum()}\nmhc allele resolution: {dataset["mhc_allele_resolution"].isna().sum()}\nassay description: {dataset["assay_description"].isna().sum()}")
@@ -202,6 +204,12 @@ if __name__ == '__main__':
 
     # remove repeat peptide-HLA pairs
     # is unique? --> no; parent iri and immunogenicity the same across repeats? --> no; is one more common? --> no; remove all instances 
+    pep_hla_pair = dataset.loc[["linear_sequence","mhc_restriction"]]
+    unique_pairs = set(pep_hla_pair)
+
+    for (peptide, hla) in pep_hla_pair:
+        if (peptide, hla) in unique_pairs:
+
 
     dataset = dataset.set_index(pd.Index(range(dataset.shape[0])))
 
@@ -214,11 +222,8 @@ if __name__ == '__main__':
     parent_iris = set(non_unique_iris)
     parent_iris.discard(None)
    
-    # print(len(parent_iris),"\n", parent_iris)
-
 
     # get parent protein sequences from uniprot
-    # sequences = query_uniprot(parent_iris)
     sequences = query_uniprot(parent_iris)
     print(f"{len(parent_iris)}\n{len(sequences)}")
 
@@ -249,7 +254,7 @@ if __name__ == '__main__':
         size = groups.count(group)
         group_sizes.append(size)
     group_sizes.sort(reverse=True)
-    print(f"number of groups: {len(group_sizes)} = {len(set(groups))}, number of entries: {len(non_unique_iris)} = {len(dataset_iris)}\ngroup sizes: {group_sizes}")
+    print(f"number of groups: {len(group_sizes)} = {len(set(groups))}, number of entries: {len(non_unique_iris)} = {len(dataset_iris)}")
 
     # plot histogram 
     plt.hist(group_sizes, bins=20, density=True, log=True)
@@ -257,10 +262,6 @@ if __name__ == '__main__':
     plt.xlabel("Group size")
     plt.savefig("GroupSizeDist.png")
 
-    # save .csv with the cols I need (same as original dataset + groupId column)
-    # peptide, HLA, immunogenicity, group_id
-    # linear_sequence, mhc_restriction, assay description (needs processing)
-    # --> not all mhc_restrictions are the right detail/format
 
     # drop unnecessary columns 
     # rename columns to match structure
